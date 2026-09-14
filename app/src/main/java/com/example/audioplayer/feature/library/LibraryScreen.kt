@@ -56,7 +56,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.database.ConnectionEntity
 import com.example.audioplayer.core.model.AudioTrack
-import com.example.audioplayer.core.model.RecentPlay
 import com.example.audioplayer.core.storage.MediaPermission
 import com.example.audioplayer.ui.formatDuration
 
@@ -73,7 +72,6 @@ fun LibraryScreen(
     val localState by viewModel.localState.collectAsStateWithLifecycle()
     val connections by viewModel.connections.collectAsStateWithLifecycle()
     val testingConnectionId by viewModel.testingConnectionId.collectAsStateWithLifecycle()
-    val recentPlays by viewModel.recentPlays.collectAsStateWithLifecycle()
     val connectionMessage by viewModel.connectionMessage.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(initialTab) }
@@ -126,14 +124,6 @@ fun LibraryScreen(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     text = { Text("网络音乐") },
-                )
-            }
-
-            if (recentPlays.isNotEmpty()) {
-                RecentPlaySection(
-                    items = recentPlays,
-                    onPlay = viewModel::playRecent,
-                    onClear = viewModel::clearRecentPlays,
                 )
             }
 
@@ -285,40 +275,6 @@ private fun LocalMusicContent(
                             onClick = {
                                 onPlay(state.visibleTracks, state.visibleTracks.indexOf(track))
                             },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecentPlaySection(
-    items: List<RecentPlay>,
-    onPlay: (RecentPlay) -> Unit,
-    onClear: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("最近播放", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = onClear) { Text("清空") }
-        }
-        LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)) {
-            items(items, key = { it.mediaId }) { item ->
-                Card(
-                    modifier = Modifier
-                        .padding(end = 12.dp)
-                        .clickable { onPlay(item) },
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            item.artist ?: if (item.sourceType.name == "LOCAL") "本地音乐" else "NAS 音乐",
-                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
                 }

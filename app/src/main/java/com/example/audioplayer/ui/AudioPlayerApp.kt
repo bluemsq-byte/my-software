@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Settings
@@ -37,6 +38,7 @@ import com.example.audioplayer.feature.connection.AddNetworkMusicScreen
 import com.example.audioplayer.feature.connection.ConnectionEditorScreen
 import com.example.audioplayer.feature.connection.SmbSharePickerScreen
 import com.example.audioplayer.feature.library.LibraryScreen
+import com.example.audioplayer.feature.library.RecentPlayScreen
 import com.example.audioplayer.feature.player.PlayerScreen
 import com.example.audioplayer.feature.playlist.PlaylistDetailScreen
 import com.example.audioplayer.feature.playlist.PlaylistListScreen
@@ -46,6 +48,7 @@ import com.example.audioplayer.feature.timer.TimerListScreen
 import com.example.audioplayer.ui.components.MiniPlayer
 
 private const val ROUTE_LIBRARY = "library"
+private const val ROUTE_RECENT = "recent"
 private const val ROUTE_TIMERS = "timers"
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_PLAYLISTS = "playlists"
@@ -93,6 +96,12 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                             },
                             icon = { Icon(Icons.Default.Home, contentDescription = null) },
                             label = { Text("首页") },
+                        )
+                        NavigationBarItem(
+                            selected = currentRoute == ROUTE_RECENT,
+                            onClick = { navController.navigate(ROUTE_RECENT) { launchSingleTop = true } },
+                            icon = { Icon(Icons.Default.History, contentDescription = null) },
+                            label = { Text("最近") },
                         )
                         NavigationBarItem(
                             selected = currentRoute == ROUTE_TIMERS,
@@ -155,6 +164,9 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                         navController.navigate("$ROUTE_CONNECTION_EDITOR?connectionId=${Uri.encode(connection.id)}")
                     },
                 )
+            }
+            composable(ROUTE_RECENT) {
+                RecentPlayScreen()
             }
             composable(ROUTE_TIMERS) {
                 TimerListScreen(

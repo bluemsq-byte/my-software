@@ -35,7 +35,9 @@ class PlaybackDeviceManager @Inject constructor(
     private val mediaProxyServer: LocalMediaProxyServer,
 ) {
     private val router = MediaRouter.getInstance(context)
-    private val castContext = CastContext.getSharedInstance(context)
+    private val castContext: CastContext? = runCatching {
+        CastContext.getSharedInstance(context)
+    }.getOrNull()
     private val castSelector = MediaRouteSelector.Builder()
         .addControlCategory(CastMediaControlIntent.categoryForCast(DEFAULT_RECEIVER_ID))
         .build()
@@ -75,7 +77,7 @@ class PlaybackDeviceManager @Inject constructor(
 
     init {
         router.addCallback(MediaRouteSelector.EMPTY, callback, MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY)
-        castContext.sessionManager.addSessionManagerListener(sessionListener, CastSession::class.java)
+        castContext?.sessionManager?.addSessionManagerListener(sessionListener, CastSession::class.java)
         refresh()
     }
 
@@ -110,7 +112,7 @@ class PlaybackDeviceManager @Inject constructor(
 
     suspend fun playOnCast(track: com.example.audioplayer.core.model.AudioTrack): Boolean {
         pendingTrack = track
-        val session = castContext.sessionManager.currentCastSession
+        val session = castContext?.sessionManager?.currentCastSession
         return if (session != null) {
             loadOnCastSession(session)
         } else {

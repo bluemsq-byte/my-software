@@ -141,27 +141,35 @@ fun PlaylistDetailScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                     }
                 },
-                actions = {
-                    Row {
-                        OutlinedButton(onClick = viewModel::openAddLocalDialog) {
-                            Text("添加本地")
-                        }
-                        OutlinedButton(onClick = onAddNetworkSongs) {
-                            Text("添加网络")
-                        }
-                    }
-                },
+
             )
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Button(
-                onClick = { viewModel.playAll() },
-                enabled = state.items.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Text("播放全部")
+                Button(
+                    onClick = { viewModel.playAll() },
+                    enabled = state.items.isNotEmpty(),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Text("播放全部")
+                }
+                Button(
+                    onClick = viewModel::openAddLocalDialog,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("添加本地")
+                }
+                Button(
+                    onClick = onAddNetworkSongs,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("添加网络")
+                }
             }
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
