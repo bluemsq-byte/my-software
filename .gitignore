@@ -1,0 +1,14 @@
+.gradle/
+.gradle-home/
+.toolchain/
+.android-home/
+local.properties
+keystore.properties
+.secrets/
+**/build/
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+dist/
