@@ -23,8 +23,8 @@ android {
         applicationId = "com.example.audioplayer"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -74,6 +74,10 @@ android {
         }
     }
 
+    sourceSets {
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -104,6 +108,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.mediarouter)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.datasource.okhttp)
@@ -114,6 +119,7 @@ dependencies {
 
     implementation(libs.okhttp)
     implementation(libs.smbj)
+    implementation(libs.jcifs.ng)
     implementation(libs.slf4j.android)
     implementation(libs.kotlinx.coroutines.android)
 
@@ -131,6 +137,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.truth)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 }

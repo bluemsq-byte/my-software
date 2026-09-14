@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,11 +30,15 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -49,9 +55,26 @@ fun SettingsScreen(
     val context = LocalContext.current
     val connections by viewModel.connections.collectAsStateWithLifecycle()
     val backgroundPlayback by viewModel.backgroundPlaybackEnabled.collectAsStateWithLifecycle()
+    val cacheUsage by viewModel.cacheUsage.collectAsStateWithLifecycle()
+    val bluetoothDevices by viewModel.bluetoothDevices.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        viewModel.bluetoothRouteManager.refresh()
+    }
+
+    LaunchedEffect(message) {
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessage()
+        }
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("设置") }) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -92,6 +115,60 @@ fun SettingsScreen(
                                 IconButton(onClick = { viewModel.deleteConnection(connection) }) {
                                     Icon(Icons.Default.Delete, contentDescription = "删除")
                                 }
+                            },
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text("缓存", style = MaterialTheme.typography.titleMedium)
+                ListItem(
+                    headlineContent = { Text("缓存占用") },
+                    supportingContent = {
+                        Text(
+                            "总计 ${formatBytes(cacheUsage.totalBytes)}，网络 ${formatBytes(cacheUsage.networkBytes)}",
+                        )
+                    },
+                    trailingContent = {
+                        Button(onClick = viewModel::clearCache) { Text("清除缓存") }
+                    },
+                )
+            }
+
+            item {
+                Text("蓝牙输出", style = MaterialTheme.typography.titleMedium)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
+                    PackageManager.PERMISSION_GRANTED
+                ) {
+                    Button(
+                        onClick = {
+                            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                        },
+                    ) {
+                        Text("授权并扫描蓝牙设备")
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { viewModel.bluetoothRouteManager.refresh() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("刷新蓝牙输出设备")
+                    }
+                }
+                if (bluetoothDevices.isEmpty()) {
+                    Text("未发现已配对的蓝牙音频设备")
+                } else {
+                    bluetoothDevices.forEach { device ->
+                        ListItem(
+                            headlineContent = { Text(device.name) },
+                            supportingContent = { Text(if (device.isSelected) "当前输出" else "点击尝试切换") },
+                            trailingContent = {
+                                Button(
+                                    onClick = { viewModel.selectBluetoothDevice(device.id) },
+                                    enabled = !device.isSelected,
+                                ) { Text("选择") }
                             },
                         )
                     }
@@ -201,4 +278,8 @@ private fun android.content.Context.openAppSettings() {
             data = Uri.parse("package:$packageName")
         },
     )
+}
+private fun formatBytes(bytes: Long): String {
+    val mb = bytes / 1024.0 / 1024.0
+    return if (mb >= 1.0) "%.1f MB".format(mb) else "%.0f KB".format(bytes / 1024.0)
 }

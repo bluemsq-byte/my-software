@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
@@ -25,8 +26,11 @@ import androidx.navigation.navArgument
 import com.example.audioplayer.core.playback.PlaybackController
 import com.example.audioplayer.feature.browser.BrowserScreen
 import com.example.audioplayer.feature.connection.ConnectionEditorScreen
+import com.example.audioplayer.feature.connection.SmbSharePickerScreen
 import com.example.audioplayer.feature.library.LibraryScreen
 import com.example.audioplayer.feature.player.PlayerScreen
+import com.example.audioplayer.feature.playlist.PlaylistDetailScreen
+import com.example.audioplayer.feature.playlist.PlaylistListScreen
 import com.example.audioplayer.feature.settings.SettingsScreen
 import com.example.audioplayer.feature.timer.TimerEditorScreen
 import com.example.audioplayer.feature.timer.TimerListScreen
@@ -35,10 +39,13 @@ import com.example.audioplayer.ui.components.MiniPlayer
 private const val ROUTE_LIBRARY = "library"
 private const val ROUTE_TIMERS = "timers"
 private const val ROUTE_SETTINGS = "settings"
+private const val ROUTE_PLAYLISTS = "playlists"
+private const val ROUTE_PLAYLIST_DETAIL = "playlist_detail"
 private const val ROUTE_PLAYER = "player"
 private const val ROUTE_CONNECTION_EDITOR = "connection"
 private const val ROUTE_TIMER_EDITOR = "timer_editor"
 private const val ROUTE_BROWSER = "browser"
+private const val ROUTE_SMB_SHARES = "smb_shares"
 
 @Composable
 fun AudioPlayerApp(playbackController: PlaybackController) {
@@ -77,6 +84,16 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                             label = { Text("定时") },
                         )
                         NavigationBarItem(
+                            selected = currentRoute == ROUTE_PLAYLISTS || currentRoute == "$ROUTE_PLAYLIST_DETAIL/{playlistId}",
+                            onClick = {
+                                navController.navigate(ROUTE_PLAYLISTS) {
+                                    launchSingleTop = true
+                                }
+                            },
+                            icon = { Icon(Icons.Default.QueueMusic, contentDescription = null) },
+                            label = { Text("播放列表") },
+                        )
+                        NavigationBarItem(
                             selected = currentRoute == ROUTE_SETTINGS,
                             onClick = { navController.navigate(ROUTE_SETTINGS) { launchSingleTop = true } },
                             icon = { Icon(Icons.Default.Settings, contentDescription = null) },
@@ -96,7 +113,16 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                 LibraryScreen(
                     onAddConnection = { navController.navigate(ROUTE_CONNECTION_EDITOR) },
                     onOpenConnection = { connection ->
-                        navController.navigate(browserRoute(connection.id))
+                        if (connection.protocol == com.example.audioplayer.core.model.ConnectionProtocol.SMB &&
+                            connection.selectedShare.isNullOrBlank()
+                        ) {
+                            navController.navigate("$ROUTE_SMB_SHARES/${Uri.encode(connection.id)}")
+                        } else {
+                            navController.navigate(browserRoute(connection.id))
+                        }
+                    },
+                    onEditConnection = { connection ->
+                        navController.navigate("$ROUTE_CONNECTION_EDITOR?connectionId=${Uri.encode(connection.id)}")
                     },
                 )
             }
@@ -122,6 +148,24 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                     onBack = { navController.popBackStack() },
                 )
             }
+            composable(ROUTE_PLAYLISTS) {
+                PlaylistListScreen(
+                    onCreate = {},
+                    onOpen = { playlistId ->
+                        navController.navigate("$ROUTE_PLAYLIST_DETAIL/$playlistId")
+                    },
+                )
+            }
+            composable(
+                route = "$ROUTE_PLAYLIST_DETAIL/{playlistId}",
+                arguments = listOf(
+                    navArgument("playlistId") { type = NavType.LongType },
+                ),
+            ) {
+                PlaylistDetailScreen(
+                    onBack = { navController.popBackStack() },
+                )
+            }
             composable(ROUTE_SETTINGS) {
                 SettingsScreen()
             }
@@ -143,6 +187,20 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                 ConnectionEditorScreen(
                     onSaved = { navController.popBackStack() },
                     onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                route = "$ROUTE_SMB_SHARES/{connectionId}",
+                arguments = listOf(
+                    navArgument("connectionId") { type = NavType.StringType },
+                ),
+            ) { entry ->
+                val selectedConnectionId = entry.arguments?.getString("connectionId").orEmpty()
+                SmbSharePickerScreen(
+                    onBack = { navController.popBackStack() },
+                    onSelected = {
+                        navController.navigate(browserRoute(selectedConnectionId))
+                    },
                 )
             }
             composable(

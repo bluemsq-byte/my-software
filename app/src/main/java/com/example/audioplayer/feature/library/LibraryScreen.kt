@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -30,7 +31,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -51,6 +55,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.database.ConnectionEntity
 import com.example.audioplayer.core.model.AudioTrack
+import com.example.audioplayer.core.model.RecentPlay
 import com.example.audioplayer.core.storage.MediaPermission
 import com.example.audioplayer.ui.formatDuration
 
@@ -59,11 +64,16 @@ import com.example.audioplayer.ui.formatDuration
 fun LibraryScreen(
     onAddConnection: () -> Unit,
     onOpenConnection: (ConnectionEntity) -> Unit,
+    onEditConnection: (ConnectionEntity) -> Unit,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val localState by viewModel.localState.collectAsStateWithLifecycle()
     val connections by viewModel.connections.collectAsStateWithLifecycle()
+    val testingConnectionId by viewModel.testingConnectionId.collectAsStateWithLifecycle()
+    val recentPlays by viewModel.recentPlays.collectAsStateWithLifecycle()
+    val connectionMessage by viewModel.connectionMessage.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(0) }
     var localViewIsFolders by remember { mutableStateOf(false) }
     var hasPermission by remember { mutableStateOf(MediaPermission.isGranted(context)) }
@@ -73,6 +83,13 @@ fun LibraryScreen(
     ) { granted ->
         hasPermission = granted
         if (granted) viewModel.loadLocal(force = true)
+    }
+
+    LaunchedEffect(connectionMessage) {
+        connectionMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearConnectionMessage()
+        }
     }
 
     LaunchedEffect(hasPermission) {
@@ -90,6 +107,7 @@ fun LibraryScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -109,6 +127,14 @@ fun LibraryScreen(
                 )
             }
 
+            if (recentPlays.isNotEmpty()) {
+                RecentPlaySection(
+                    items = recentPlays,
+                    onPlay = viewModel::playRecent,
+                    onClear = viewModel::clearRecentPlays,
+                )
+            }
+
             if (selectedTab == 0) {
                 LocalMusicContent(
                     state = localState,
@@ -117,6 +143,7 @@ fun LibraryScreen(
                     onToggleView = { localViewIsFolders = !localViewIsFolders },
                     onRequestPermission = { permissionLauncher.launch(MediaPermission.permission) },
                     onRefresh = { viewModel.loadLocal(force = true) },
+                    onSearch = viewModel::updateLocalSearchQuery,
                     onPlay = viewModel::play,
                 )
             } else {
@@ -125,6 +152,9 @@ fun LibraryScreen(
                     onAddConnection = onAddConnection,
                     onOpenConnection = onOpenConnection,
                     onDeleteConnection = viewModel::deleteConnection,
+                    onEditConnection = onEditConnection,
+                    onTestConnection = viewModel::testConnection,
+                    testingConnectionId = testingConnectionId,
                 )
             }
         }
@@ -139,6 +169,7 @@ private fun LocalMusicContent(
     onToggleView: () -> Unit,
     onRequestPermission: () -> Unit,
     onRefresh: () -> Unit,
+    onSearch: (String) -> Unit,
     onPlay: (List<AudioTrack>, Int) -> Unit,
 ) {
     when {
@@ -199,6 +230,15 @@ private fun LocalMusicContent(
         }
 
         else -> {
+            OutlinedTextField(
+                value = state.searchQuery,
+                onValueChange = onSearch,
+                label = { Text("搜索本地音乐") },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -220,7 +260,7 @@ private fun LocalMusicContent(
 
             if (showFolders) {
                 LazyColumn {
-                    items(state.folders, key = { it.path }) { folder ->
+                    items(state.visibleFolders, key = { it.path }) { folder ->
                         ListItem(
                             headlineContent = { Text(folder.name) },
                             supportingContent = { Text("${folder.tracks.size} 首") },
@@ -233,12 +273,46 @@ private fun LocalMusicContent(
                 }
             } else {
                 LazyColumn {
-                    items(state.tracks, key = { it.id }) { track ->
+                    items(state.visibleTracks, key = { it.id }) { track ->
                         AudioTrackRow(
                             track = track,
                             onClick = {
-                                onPlay(state.tracks, state.tracks.indexOf(track))
+                                onPlay(state.visibleTracks, state.visibleTracks.indexOf(track))
                             },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentPlaySection(
+    items: List<RecentPlay>,
+    onPlay: (RecentPlay) -> Unit,
+    onClear: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("最近播放", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            OutlinedButton(onClick = onClear) { Text("清空") }
+        }
+        LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)) {
+            items(items, key = { it.mediaId }) { item ->
+                Card(
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .clickable { onPlay(item) },
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            item.artist ?: if (item.sourceType.name == "LOCAL") "本地音乐" else "NAS 音乐",
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
                 }
@@ -253,6 +327,9 @@ private fun NetworkMusicContent(
     onAddConnection: () -> Unit,
     onOpenConnection: (ConnectionEntity) -> Unit,
     onDeleteConnection: (ConnectionEntity) -> Unit,
+    onEditConnection: (ConnectionEntity) -> Unit,
+    onTestConnection: (ConnectionEntity) -> Unit,
+    testingConnectionId: String?,
 ) {
     if (connections.isEmpty()) {
         Column(
@@ -297,8 +374,19 @@ private fun NetworkMusicContent(
                         },
                         leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
                         trailingContent = {
-                            OutlinedButton(onClick = { onDeleteConnection(connection) }) {
-                                Text("删除")
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                OutlinedButton(
+                                    onClick = { onTestConnection(connection) },
+                                    enabled = testingConnectionId != connection.id,
+                                ) {
+                                    Text(if (testingConnectionId == connection.id) "测试中" else "测试")
+                                }
+                                OutlinedButton(onClick = { onEditConnection(connection) }) {
+                                    Text("编辑")
+                                }
+                                OutlinedButton(onClick = { onDeleteConnection(connection) }) {
+                                    Text("删除")
+                                }
                             }
                         },
                     )

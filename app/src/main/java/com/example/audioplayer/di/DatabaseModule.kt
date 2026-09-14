@@ -4,7 +4,11 @@ import android.content.Context
 import androidx.room.Room
 import com.example.audioplayer.core.database.AppDatabase
 import com.example.audioplayer.core.database.ConnectionDao
+import com.example.audioplayer.core.database.MIGRATION_1_2
+import com.example.audioplayer.core.database.PlaylistDao
+import com.example.audioplayer.core.database.RecentPlayDao
 import com.example.audioplayer.core.database.TimerDao
+import com.example.audioplayer.core.database.TimerFileDao
 import com.example.audioplayer.core.security.AndroidCredentialStore
 import com.example.audioplayer.core.security.CredentialStore
 import dagger.Module
@@ -20,7 +24,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder(context, AppDatabase::class.java, "audio_player.db").build()
+        return Room.databaseBuilder(context, AppDatabase::class.java, "audio_player.db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
     }
 
     @Provides
@@ -30,10 +36,17 @@ object DatabaseModule {
     fun provideTimerDao(database: AppDatabase): TimerDao = database.timerDao()
 
     @Provides
+    fun provideTimerFileDao(database: AppDatabase): TimerFileDao = database.timerFileDao()
+
+    @Provides
+    fun provideRecentPlayDao(database: AppDatabase): RecentPlayDao = database.recentPlayDao()
+
+    @Provides
+    fun providePlaylistDao(database: AppDatabase): PlaylistDao = database.playlistDao()
+
+    @Provides
     @Singleton
     fun provideCredentialStore(@ApplicationContext context: Context): CredentialStore {
         return AndroidCredentialStore(context)
     }
-
-
 }

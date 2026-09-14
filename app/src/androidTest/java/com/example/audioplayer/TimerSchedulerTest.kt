@@ -43,7 +43,7 @@ class TimerSchedulerTest {
             grantExactAlarmPermission()
         }
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val repository = TimerRepository(database.timerDao())
+        val repository = TimerRepository(database.timerDao(), database.timerFileDao())
         val scheduler = TimerScheduler(context, repository)
         assertTrue(scheduler.canScheduleExactAlarms())
 

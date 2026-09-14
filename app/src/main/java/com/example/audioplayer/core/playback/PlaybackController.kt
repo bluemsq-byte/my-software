@@ -10,6 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.example.audioplayer.core.model.AudioTrack
+import com.example.audioplayer.core.repository.RecentPlayRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,6 +40,7 @@ data class PlaybackUiState(
 @Singleton
 class PlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val recentPlayRepository: RecentPlayRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(PlaybackUiState())
@@ -47,6 +49,7 @@ class PlaybackController @Inject constructor(
     private var controller: MediaController? = null
     private var progressJob: Job? = null
     private var tracksById = emptyMap<String, AudioTrack>()
+    private var lastRecordedTrackId: String? = null
 
     fun connect() {
         if (controller != null) return
@@ -102,6 +105,13 @@ class PlaybackController @Inject constructor(
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            val mediaId = player.currentMediaItem?.mediaId
+            if (mediaId != null && mediaId != lastRecordedTrackId) {
+                lastRecordedTrackId = mediaId
+                tracksById[mediaId]?.let { track ->
+                    scope.launch { recentPlayRepository.record(track) }
+                }
+            }
             _state.value = player.toUiState()
         }
     }

@@ -70,6 +70,7 @@ class StorageAndCredentialsTest {
             port = 445,
             username = "user",
             share = "music",
+            selectedShare = "music",
             basePath = "/",
             domain = null,
             useHttps = true,

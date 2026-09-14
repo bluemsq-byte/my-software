@@ -11,6 +11,7 @@ data class RemoteConnection(
     val share: String? = null,
     val basePath: String = "/",
     val domain: String? = null,
+    val selectedShare: String? = null,
     val useHttps: Boolean = true,
 ) {
     val displayAddress: String

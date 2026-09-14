@@ -20,6 +20,7 @@ import com.example.audioplayer.MainActivity
 import com.example.audioplayer.R
 import com.example.audioplayer.core.model.AudioTrack
 import com.example.audioplayer.core.model.TimerAction
+import com.example.audioplayer.core.model.TimerSelectionType
 import com.example.audioplayer.core.model.TimerSourceType
 import com.example.audioplayer.core.repository.RemoteFileRepository
 import com.example.audioplayer.core.repository.TimerRepository
@@ -135,9 +136,15 @@ class PlaybackService : MediaSessionService() {
 
         val tracks = when (task.sourceType) {
             TimerSourceType.LOCAL_FOLDER -> {
-                localMediaRepository.scan()
-                    .filter { it.remotePath == task.sourcePath }
-                    .sortedBy { it.title.lowercase() }
+                val localTracks = localMediaRepository.scan()
+                if (task.selectionType == TimerSelectionType.FILES) {
+                    val selected = task.selectedFiles.toSet()
+                    task.selectedFiles.mapNotNull { uri -> localTracks.firstOrNull { it.uri == uri } }
+                } else {
+                    localTracks
+                        .filter { it.remotePath == task.sourcePath }
+                        .sortedBy { it.title.lowercase() }
+                }
             }
 
             TimerSourceType.SMB_FOLDER,
@@ -149,7 +156,14 @@ class PlaybackService : MediaSessionService() {
                 }
                 val path = task.sourcePath ?: "/"
                 val entries = remoteFileRepository.list(connectionId, path)
-                remoteFileRepository.buildQueue(connectionId, path, entries)
+                val queueByPath = remoteFileRepository
+                    .buildQueue(connectionId, path, entries)
+                    .associateBy { it.remotePath }
+                if (task.selectionType == TimerSelectionType.FILES) {
+                    task.selectedFiles.mapNotNull(queueByPath::get)
+                } else {
+                    remoteFileRepository.buildQueue(connectionId, path, entries)
+                }
             }
         }
 

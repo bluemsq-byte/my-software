@@ -116,12 +116,9 @@ fun ConnectionEditorScreen(
             )
 
             if (state.protocol == ConnectionProtocol.SMB) {
-                OutlinedTextField(
-                    value = state.share,
-                    onValueChange = viewModel::updateShare,
-                    label = { Text("共享文件夹") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                state.selectedShare?.let { share ->
+                    Text("已选择共享文件夹：$share")
+                }
                 OutlinedTextField(
                     value = state.domain,
                     onValueChange = viewModel::updateDomain,

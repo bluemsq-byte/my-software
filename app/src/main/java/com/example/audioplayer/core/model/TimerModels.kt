@@ -15,6 +15,11 @@ enum class TimerSourceType {
     WEBDAV_FOLDER,
 }
 
+enum class TimerSelectionType {
+    FOLDER,
+    FILES,
+}
+
 data class TimerTask(
     val id: Long = 0L,
     val name: String,
@@ -24,8 +29,10 @@ data class TimerTask(
     val repeatDays: Set<DayOfWeek>,
     val enabled: Boolean,
     val sourceType: TimerSourceType? = null,
+    val selectionType: TimerSelectionType = TimerSelectionType.FOLDER,
     val connectionId: String? = null,
     val sourcePath: String? = null,
+    val selectedFiles: List<String> = emptyList(),
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
     val lastRunEpochMillis: Long? = null,
 ) {

@@ -15,7 +15,7 @@ fun RemoteConnection.toSmbConfig(): SmbConnectionConfig {
         username = username,
         password = password,
         domain = domain.orEmpty(),
-        share = requireNotNull(share),
+        share = requireNotNull(selectedShare ?: share),
     )
 }
 

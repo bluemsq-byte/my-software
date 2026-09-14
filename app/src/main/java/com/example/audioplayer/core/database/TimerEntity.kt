@@ -3,6 +3,7 @@ package com.example.audioplayer.core.database
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.audioplayer.core.model.TimerAction
+import com.example.audioplayer.core.model.TimerSelectionType
 import com.example.audioplayer.core.model.TimerSourceType
 
 @Entity(tableName = "timers")
@@ -15,6 +16,7 @@ data class TimerEntity(
     val repeatDaysMask: Int,
     val enabled: Boolean,
     val sourceType: TimerSourceType?,
+    val selectionType: TimerSelectionType,
     val connectionId: String?,
     val sourcePath: String?,
     val createdAtEpochMillis: Long,

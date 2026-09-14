@@ -8,6 +8,8 @@ import com.example.audioplayer.core.model.RemoteConnection
 import com.example.audioplayer.core.network.RemoteEntry
 import com.example.audioplayer.core.network.RemotePath
 import com.example.audioplayer.core.network.smb.SmbClient
+import com.example.audioplayer.core.network.smb.SmbConnectionConfig
+import com.example.audioplayer.core.network.smb.SmbShareEnumerator
 import com.example.audioplayer.core.network.webdav.WebDavClient
 import com.example.audioplayer.core.playback.RemotePlaybackQueueBuilder
 import javax.inject.Inject
@@ -18,6 +20,7 @@ class RemoteFileRepository @Inject constructor(
     private val connectionRepository: ConnectionRepository,
     private val webDavClient: WebDavClient,
     private val smbClient: SmbClient,
+    private val smbShareEnumerator: SmbShareEnumerator,
 ) {
     suspend fun list(connectionId: String, path: String = "/"): List<RemoteEntry> {
         val connection = requireNotNull(connectionRepository.get(connectionId)) {
@@ -32,8 +35,26 @@ class RemoteFileRepository @Inject constructor(
     suspend fun test(connection: RemoteConnection) {
         when (connection.protocol) {
             ConnectionProtocol.WEBDAV -> webDavClient.testConnection(connection.toWebDavConfig())
-            ConnectionProtocol.SMB -> smbClient.testConnection(connection.toSmbConfig())
+            ConnectionProtocol.SMB -> {
+                val share = connection.selectedShare ?: connection.share
+                if (share.isNullOrBlank()) {
+                    listSmbShares(connection)
+                } else {
+                    smbClient.testConnection(connection.toSmbConfig())
+                }
+            }
         }
+    }
+
+    fun listSmbShares(connection: RemoteConnection): List<String> {
+        require(connection.protocol == ConnectionProtocol.SMB)
+        return smbShareEnumerator.listShares(
+            host = connection.host,
+            port = connection.port ?: 445,
+            domain = connection.domain.orEmpty(),
+            username = connection.username,
+            password = connection.password,
+        )
     }
 
     fun buildQueue(

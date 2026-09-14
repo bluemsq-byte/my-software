@@ -8,13 +8,17 @@ import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedButton
@@ -24,8 +28,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -35,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.model.TimerAction
+import com.example.audioplayer.core.model.TimerSelectionType
 import com.example.audioplayer.core.model.TimerSourceType
 import java.time.DayOfWeek
 
@@ -154,16 +162,52 @@ fun TimerEditorScreen(
                     }
                 }
 
+                Text("选择方式")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = state.selectionType == TimerSelectionType.FOLDER,
+                        onClick = { viewModel.updateSelectionType(TimerSelectionType.FOLDER) },
+                        label = { Text("文件夹") },
+                    )
+                    FilterChip(
+                        selected = state.selectionType == TimerSelectionType.FILES,
+                        onClick = { viewModel.updateSelectionType(TimerSelectionType.FILES) },
+                        label = { Text("选择文件") },
+                    )
+                }
+
                 if (state.sourceType == TimerSourceType.LOCAL_FOLDER) {
-                    if (state.localFolders.isEmpty()) {
-                        Text("没有可选本地文件夹，请先授权并扫描音乐")
+                    if (state.selectionType == TimerSelectionType.FOLDER) {
+                        if (state.localFolders.isEmpty()) {
+                            Text("没有可选本地文件夹，请先授权并扫描音乐")
+                        } else {
+                            state.localFolders.forEach { folder ->
+                                FilterChip(
+                                    selected = state.sourcePath == folder.path,
+                                    onClick = { viewModel.updateSourcePath(folder.path) },
+                                    label = { Text("${folder.name} (${folder.tracks.size})") },
+                                )
+                            }
+                        }
                     } else {
-                        state.localFolders.forEach { folder ->
-                            FilterChip(
-                                selected = state.sourcePath == folder.path,
-                                onClick = { viewModel.updateSourcePath(folder.path) },
-                                label = { Text("${folder.name} (${folder.tracks.size})") },
-                            )
+                        Text("已选择 ${state.selectedFiles.size} 个本地文件")
+                        if (state.localTracks.isEmpty()) {
+                            Text("没有可选本地音乐，请先授权并扫描音乐")
+                        } else {
+                            state.localTracks.take(100).forEach { track ->
+                                androidx.compose.foundation.layout.Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { viewModel.toggleLocalFile(track.uri) },
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    Checkbox(
+                                        checked = track.uri in state.selectedFiles,
+                                        onCheckedChange = { viewModel.toggleLocalFile(track.uri) },
+                                    )
+                                    Text(track.title, maxLines = 1)
+                                }
+                            }
                         }
                     }
                 } else {
@@ -179,12 +223,22 @@ fun TimerEditorScreen(
                             )
                         }
                     }
-                    OutlinedTextField(
-                        value = state.sourcePath,
-                        onValueChange = viewModel::updateSourcePath,
-                        label = { Text("NAS 音乐文件夹路径") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    if (state.selectionType == TimerSelectionType.FOLDER) {
+                        OutlinedTextField(
+                            value = state.sourcePath,
+                            onValueChange = viewModel::updateSourcePath,
+                            label = { Text("NAS 音乐文件夹路径") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedButton(onClick = viewModel::openRemotePicker) {
+                            Text("浏览 NAS 文件夹")
+                        }
+                    } else {
+                        Text("已选择 ${state.selectedFiles.size} 个 NAS 文件")
+                        OutlinedButton(onClick = viewModel::openRemotePicker) {
+                            Text("选择 NAS 文件")
+                        }
+                    }
                 }
             }
 
@@ -218,5 +272,65 @@ fun TimerEditorScreen(
                 Text(if (state.isSaving) "保存中…" else "保存定时")
             }
         }
+    }
+
+    if (state.pickerVisible) {
+        AlertDialog(
+            onDismissRequest = viewModel::closePicker,
+            title = { Text(state.pickerPath) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (state.pickerPath != "/") {
+                        TextButton(onClick = viewModel::openPickerParent) {
+                            Text("返回上级")
+                        }
+                    }
+                    if (state.pickerLoading) {
+                        CircularProgressIndicator()
+                    } else if (state.pickerError != null) {
+                        Text(state.pickerError.orEmpty())
+                    } else {
+                        LazyColumn {
+                            items(state.pickerEntries, key = { it.path }) { entry ->
+                                androidx.compose.foundation.layout.Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            if (entry.isDirectory) {
+                                                viewModel.openPickerDirectory(entry)
+                                            } else {
+                                                viewModel.togglePickerFile(entry)
+                                            }
+                                        },
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    if (!entry.isDirectory) {
+                                        Checkbox(
+                                            checked = entry.path in state.selectedFiles,
+                                            onCheckedChange = { viewModel.togglePickerFile(entry) },
+                                        )
+                                    }
+                                    Text(if (entry.isDirectory) "📁 ${entry.name}" else entry.name)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                if (state.selectionType == TimerSelectionType.FOLDER) {
+                    TextButton(onClick = viewModel::choosePickerFolder) {
+                        Text("选择当前文件夹")
+                    }
+                } else {
+                    TextButton(onClick = viewModel::confirmPickerFiles) {
+                        Text("完成")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::closePicker) { Text("取消") }
+            },
+        )
     }
 }

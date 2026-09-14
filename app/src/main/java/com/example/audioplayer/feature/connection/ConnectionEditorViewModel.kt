@@ -24,6 +24,7 @@ data class ConnectionEditorUiState(
     val username: String = "",
     val password: String = "",
     val share: String = "",
+    val selectedShare: String? = null,
     val basePath: String = "/",
     val domain: String = "",
     val useHttps: Boolean = true,
@@ -117,7 +118,6 @@ class ConnectionEditorViewModel @Inject constructor(
             state.host.isBlank() -> "请输入服务器地址"
             state.username.isBlank() -> "请输入用户名"
             state.password.isBlank() -> "请输入密码"
-            state.protocol == ConnectionProtocol.SMB && state.share.isBlank() -> "请输入共享文件夹"
             else -> null
         }
         if (error != null) {
@@ -134,6 +134,7 @@ class ConnectionEditorViewModel @Inject constructor(
             username = state.username.trim(),
             password = state.password,
             share = state.share.ifBlank { null },
+            selectedShare = state.selectedShare,
             basePath = state.basePath.ifBlank { "/" },
             domain = state.domain.ifBlank { null },
             useHttps = state.useHttps,
@@ -149,6 +150,7 @@ class ConnectionEditorViewModel @Inject constructor(
         username = username,
         password = password,
         share = share.orEmpty(),
+        selectedShare = selectedShare,
         basePath = basePath,
         domain = domain.orEmpty(),
         useHttps = useHttps,

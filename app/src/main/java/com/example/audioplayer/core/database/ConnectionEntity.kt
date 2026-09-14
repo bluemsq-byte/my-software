@@ -13,6 +13,7 @@ data class ConnectionEntity(
     val port: Int?,
     val username: String,
     val share: String?,
+    val selectedShare: String?,
     val basePath: String,
     val domain: String?,
     val useHttps: Boolean,

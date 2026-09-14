@@ -5,8 +5,8 @@ import com.example.audioplayer.core.database.ConnectionEntity
 import com.example.audioplayer.core.model.ConnectionProtocol
 import com.example.audioplayer.core.model.RemoteConnection
 import com.example.audioplayer.core.security.CredentialStore
-import javax.inject.Inject
 import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 
@@ -16,6 +16,7 @@ class ConnectionRepository @Inject constructor(
     private val credentialStore: CredentialStore,
 ) {
     private val cache = ConcurrentHashMap<String, RemoteConnection>()
+
     fun observeAll(): Flow<List<ConnectionEntity>> = connectionDao.observeAll()
 
     suspend fun get(id: String): RemoteConnection? {
@@ -52,6 +53,7 @@ class ConnectionRepository @Inject constructor(
         share = share,
         basePath = basePath,
         domain = domain,
+        selectedShare = selectedShare,
         useHttps = useHttps,
     )
 
@@ -63,6 +65,7 @@ class ConnectionRepository @Inject constructor(
         port = port,
         username = username,
         share = share,
+        selectedShare = selectedShare,
         basePath = if (protocol == ConnectionProtocol.WEBDAV) basePath else "/",
         domain = domain,
         useHttps = useHttps,

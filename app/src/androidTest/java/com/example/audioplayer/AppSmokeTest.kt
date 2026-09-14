@@ -23,6 +23,6 @@ class AppSmokeTest {
         composeRule.onNodeWithText("定时任务").assertIsDisplayed()
 
         composeRule.onAllNodesWithText("设置")[0].performClick()
-        composeRule.onNodeWithText("版本 1.0.0").assertIsDisplayed()
+        composeRule.onNodeWithText("后台播放").assertIsDisplayed()
     }
 }
