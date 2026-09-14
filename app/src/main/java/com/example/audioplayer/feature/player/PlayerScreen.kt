@@ -7,31 +7,28 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
@@ -46,14 +43,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,7 +65,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -81,7 +75,6 @@ import com.example.audioplayer.core.playback.PlaybackController
 import com.example.audioplayer.core.playback.PlaybackMode
 import com.example.audioplayer.feature.timer.SleepTimerViewModel
 import com.example.audioplayer.ui.formatDuration
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,11 +88,11 @@ fun PlayerScreen(
     val state by playbackController.state.collectAsStateWithLifecycle()
     val remainingMillis by sleepTimerViewModel.remainingMillis.collectAsStateWithLifecycle()
     val devices by deviceViewModel.devices.collectAsStateWithLifecycle()
+    val currentDevice by deviceViewModel.currentDeviceName.collectAsStateWithLifecycle()
     var draggingValue by remember { mutableFloatStateOf(-1f) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showDeviceDialog by remember { mutableStateOf(false) }
-    var showQueue by remember { mutableStateOf(false) }
-    var vinylRotation by remember { mutableFloatStateOf(0f) }
+    val threshold = with(LocalDensity.current) { 72.dp.toPx() }
 
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -110,50 +103,46 @@ fun PlayerScreen(
         }
     }
 
-    LaunchedEffect(state.isPlaying) {
-        if (state.isPlaying) {
-            while (true) {
-                delay(16)
-                vinylRotation = (vinylRotation + 0.12f) % 360f
-            }
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (state.artworkUri != null) {
             AsyncImage(
                 model = state.artworkUri,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().blur(42.dp),
+                modifier = Modifier.fillMaxSize().blur(55.dp),
             )
-        } else {
-            Box(
-                modifier = Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(listOf(Color(0xFF5C2E91), Color(0xFF1B1035))),
-                ),
-            )
+            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = 0.88f)))
         }
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.58f)))
 
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text("正在播放", color = Color.White) },
+                    title = { Text("正在播放") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "收起", tint = Color.White)
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "收起")
                         }
                     },
-                    actions = {
-                        IconButton(
+                )
+            },
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("输出设备", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.weight(1f))
+                        TextButton(
                             onClick = {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                                    ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.BLUETOOTH_CONNECT,
-                                    ) != PackageManager.PERMISSION_GRANTED
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
+                                    PackageManager.PERMISSION_GRANTED
                                 ) {
                                     bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
                                 } else {
@@ -162,176 +151,198 @@ fun PlayerScreen(
                                 }
                             },
                         ) {
-                            Icon(Icons.Default.Speaker, contentDescription = "选择播放设备", tint = Color.White)
+                            Icon(Icons.Default.Speaker, contentDescription = null)
+                            Text(currentDevice)
+                        }
+                    }
+                }
+
+                item {
+                    if (state.artworkUri != null) {
+                        AsyncImage(
+                            model = state.artworkUri,
+                            contentDescription = "专辑封面",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(18.dp)),
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Brush.linearGradient(listOf(Color(0xFF5C2E91), Color(0xFF1B1035)))),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("音乐", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                        }
+                    }
+                }
+
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = state.title.ifBlank { "尚未播放" },
+                            style = MaterialTheme.typography.headlineSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = state.artist.orEmpty(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+
+                item {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                        val duration = state.durationMillis.coerceAtLeast(1L)
+                        val sliderValue = if (draggingValue >= 0f) {
+                            draggingValue
+                        } else {
+                            state.positionMillis.toFloat().coerceIn(0f, duration.toFloat())
+                        }
+                        Slider(
+                            value = sliderValue,
+                            onValueChange = { draggingValue = it },
+                            onValueChangeFinished = {
+                                playbackController.seekTo(draggingValue.toLong())
+                                draggingValue = -1f
+                            },
+                            valueRange = 0f..duration.toFloat(),
+                        )
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Text(formatDuration(state.positionMillis))
+                            Spacer(Modifier.weight(1f))
+                            Text(formatDuration(state.durationMillis))
+                        }
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(
+                            onClick = {
+                                val next = when (state.playbackMode) {
+                                    PlaybackMode.SEQUENTIAL -> PlaybackMode.REPEAT_ALL
+                                    PlaybackMode.REPEAT_ALL -> PlaybackMode.REPEAT_ONE
+                                    PlaybackMode.REPEAT_ONE -> PlaybackMode.SEQUENTIAL
+                                }
+                                playbackController.setPlaybackMode(next)
+                                Toast.makeText(
+                                    context,
+                                    when (next) {
+                                        PlaybackMode.SEQUENTIAL -> "顺序播放"
+                                        PlaybackMode.REPEAT_ALL -> "列表循环"
+                                        PlaybackMode.REPEAT_ONE -> "单曲循环"
+                                    },
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            },
+                        ) {
+                            Icon(
+                                imageVector = when (state.playbackMode) {
+                                    PlaybackMode.SEQUENTIAL -> Icons.Default.ArrowForward
+                                    PlaybackMode.REPEAT_ALL -> Icons.Default.Repeat
+                                    PlaybackMode.REPEAT_ONE -> Icons.Default.RepeatOne
+                                },
+                                contentDescription = "切换播放模式",
+                            )
+                        }
+                        IconButton(onClick = playbackController::previous, enabled = state.hasPrevious) {
+                            Icon(Icons.Default.SkipPrevious, contentDescription = "上一首")
+                        }
+                        FilledIconButton(onClick = playbackController::playPause, modifier = Modifier.size(72.dp)) {
+                            Icon(
+                                imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (state.isPlaying) "暂停" else "播放",
+                                modifier = Modifier.size(40.dp),
+                            )
+                        }
+                        IconButton(onClick = playbackController::next, enabled = state.hasNext) {
+                            Icon(Icons.Default.SkipNext, contentDescription = "下一首")
                         }
                         IconButton(onClick = { showSleepTimerDialog = true }) {
-                            Icon(Icons.Default.Timer, contentDescription = "倒计时停止", tint = Color.White)
+                            Icon(Icons.Default.Timer, contentDescription = "倒计时停止")
                         }
-                    },
-                )
-            },
-        ) { padding ->
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Spacer(Modifier.height(8.dp))
-                VinylRecord(
-                    artworkUri = state.artworkUri,
-                    rotation = if (state.isPlaying) vinylRotation else vinylRotation,
-                    onSwipeUp = { if (state.hasNext) playbackController.next() },
-                    onSwipeDown = { if (state.hasPrevious) playbackController.previous() },
-                )
-                Spacer(Modifier.height(20.dp))
-                Text(
-                    text = state.title.ifBlank { "尚未播放" },
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    text = state.artist.orEmpty(),
-                    color = Color.White.copy(alpha = 0.72f),
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                Spacer(Modifier.height(16.dp))
-                val duration = state.durationMillis.coerceAtLeast(1L)
-                val sliderValue = if (draggingValue >= 0f) {
-                    draggingValue
-                } else {
-                    state.positionMillis.toFloat().coerceIn(0f, duration.toFloat())
-                }
-                Slider(
-                    value = sliderValue,
-                    onValueChange = { draggingValue = it },
-                    onValueChangeFinished = {
-                        playbackController.seekTo(draggingValue.toLong())
-                        draggingValue = -1f
-                    },
-                    valueRange = 0f..duration.toFloat(),
-                )
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(formatDuration(state.positionMillis), color = Color.White.copy(alpha = 0.65f))
-                    Spacer(Modifier.weight(1f))
-                    Text(formatDuration(state.durationMillis), color = Color.White.copy(alpha = 0.65f))
-                }
-
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = playbackController::previous, enabled = state.hasPrevious) {
-                        Icon(Icons.Default.SkipPrevious, contentDescription = "上一首", tint = Color.White)
-                    }
-                    FilledIconButton(
-                        onClick = playbackController::playPause,
-                        modifier = Modifier.size(72.dp),
-                    ) {
-                        Icon(
-                            imageVector = if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (state.isPlaying) "暂停" else "播放",
-                            modifier = Modifier.size(40.dp),
-                        )
-                    }
-                    IconButton(onClick = playbackController::next, enabled = state.hasNext) {
-                        Icon(Icons.Default.SkipNext, contentDescription = "下一首", tint = Color.White)
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(
-                        onClick = {
-                            val next = when (state.playbackMode) {
-                                PlaybackMode.SEQUENTIAL -> PlaybackMode.REPEAT_ALL
-                                PlaybackMode.REPEAT_ALL -> PlaybackMode.REPEAT_ONE
-                                PlaybackMode.REPEAT_ONE -> PlaybackMode.SEQUENTIAL
-                            }
-                            playbackController.setPlaybackMode(next)
-                            Toast.makeText(
-                                context,
-                                when (next) {
-                                    PlaybackMode.SEQUENTIAL -> "顺序播放"
-                                    PlaybackMode.REPEAT_ALL -> "列表循环"
-                                    PlaybackMode.REPEAT_ONE -> "单曲循环"
-                                },
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        },
-                    ) {
-                        Icon(
-                            imageVector = when (state.playbackMode) {
-                                PlaybackMode.SEQUENTIAL -> Icons.Default.ArrowForward
-                                PlaybackMode.REPEAT_ALL -> Icons.Default.Repeat
-                                PlaybackMode.REPEAT_ONE -> Icons.Default.RepeatOne
-                            },
-                            contentDescription = "切换播放模式",
-                            tint = Color.White,
-                        )
-                    }
-                    IconButton(onClick = { showQueue = true }) {
-                        Icon(Icons.Default.QueueMusic, contentDescription = "播放队列", tint = Color.White)
-                    }
-                }
-                remainingMillis?.let { remaining ->
+                item {
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
                     Text(
-                        text = "倒计时停止：${remaining / 60_000 + 1} 分钟",
-                        color = Color.White.copy(alpha = 0.7f),
+                        text = "接下来播放",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                     )
                 }
-            }
-        }
-    }
 
-    if (showQueue) {
-        ModalBottomSheet(onDismissRequest = { showQueue = false }) {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Text("正在播放", style = MaterialTheme.typography.titleLarge)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                val threshold = with(LocalDensity.current) { 72.dp.toPx() }
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
-                    itemsIndexed(state.queue, key = { _, item -> item.mediaId }) { index, item ->
-                        var dragOffset by remember(item.mediaId) { mutableFloatStateOf(0f) }
-                        ListItem(
-                            headlineContent = { Text(item.title) },
-                            supportingContent = { Text(item.artist ?: if (item.isCurrent) "正在播放" else "接下来播放") },
-                            trailingContent = {
-                                IconButton(onClick = { playbackController.removeQueueItem(index) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "从队列移除")
-                                }
+                itemsIndexed(state.queue, key = { _, item -> item.mediaId }) { index, item ->
+                    var dragOffset by remember(item.mediaId) { mutableFloatStateOf(0f) }
+                    ListItem(
+                        headlineContent = { Text(item.title) },
+                        supportingContent = { Text(item.artist ?: if (item.isCurrent) "正在播放" else "接下来播放") },
+                        trailingContent = {
+                            IconButton(onClick = { playbackController.removeQueueItem(index) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "从队列移除")
+                            }
+                        },
+                        colors = androidx.compose.material3.ListItemDefaults.colors(
+                            containerColor = if (item.isCurrent) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                            } else {
+                                Color.Transparent
                             },
-                            modifier = Modifier
-                                .graphicsLayer { translationY = dragOffset }
-                                .pointerInput(index) {
-                                    detectDragGesturesAfterLongPress(
-                                        onDrag = { change, amount ->
-                                            change.consume()
-                                            dragOffset += amount.y
-                                            when {
-                                                dragOffset > threshold && index < state.queue.lastIndex -> {
-                                                    playbackController.moveQueueItem(index, index + 1)
-                                                    dragOffset = 0f
-                                                }
-                                                dragOffset < -threshold && index > 0 -> {
-                                                    playbackController.moveQueueItem(index, index - 1)
-                                                    dragOffset = 0f
-                                                }
+                        ),
+                        modifier = Modifier
+                            .graphicsLayer { translationY = dragOffset }
+                            .clickable {
+                                playbackController.seekToQueueItem(index)
+                            }
+                            .pointerInput(index) {
+                                detectDragGesturesAfterLongPress(
+                                    onDrag = { change, amount ->
+                                        change.consume()
+                                        dragOffset += amount.y
+                                        when {
+                                            dragOffset > threshold && index < state.queue.lastIndex -> {
+                                                playbackController.moveQueueItem(index, index + 1)
+                                                dragOffset = 0f
                                             }
-                                        },
-                                        onDragEnd = { dragOffset = 0f },
-                                        onDragCancel = { dragOffset = 0f },
-                                    )
-                                },
+                                            dragOffset < -threshold && index > 0 -> {
+                                                playbackController.moveQueueItem(index, index - 1)
+                                                dragOffset = 0f
+                                            }
+                                        }
+                                    },
+                                    onDragEnd = { dragOffset = 0f },
+                                    onDragCancel = { dragOffset = 0f },
+                                )
+                            },
+                    )
+                }
+
+                remainingMillis?.let { remaining ->
+                    item {
+                        Text(
+                            text = "倒计时停止：${remaining / 60_000 + 1} 分钟",
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -355,14 +366,7 @@ fun PlayerScreen(
                                     showDeviceDialog = false
                                 },
                             ) {
-                                Text(
-                                    (if (device.isSelected) "✓ " else "") + device.name +
-                                        when (device.type.name) {
-                                            "CAST" -> "（Cast）"
-                                            "BLUETOOTH" -> "（蓝牙）"
-                                            else -> ""
-                                        },
-                                )
+                                Text((if (device.isSelected) "✓ " else "") + device.name)
                             }
                         }
                     }
@@ -386,95 +390,19 @@ fun PlayerScreen(
                                 sleepTimerViewModel.start(minutes)
                                 showSleepTimerDialog = false
                             },
-                        ) {
-                            Text("$minutes 分钟后停止")
-                        }
+                        ) { Text("$minutes 分钟后停止") }
                     }
                     TextButton(
                         onClick = {
                             sleepTimerViewModel.cancel()
                             showSleepTimerDialog = false
                         },
-                    ) {
-                        Text("取消倒计时")
-                    }
+                    ) { Text("取消倒计时") }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showSleepTimerDialog = false }) {
-                    Text("关闭")
-                }
+                TextButton(onClick = { showSleepTimerDialog = false }) { Text("关闭") }
             },
-        )
-    }
-}
-
-@Composable
-private fun VinylRecord(
-    artworkUri: String?,
-    rotation: Float,
-    onSwipeUp: () -> Unit,
-    onSwipeDown: () -> Unit,
-) {
-    var dragDistance by remember { mutableFloatStateOf(0f) }
-    Box(
-        modifier = Modifier
-            .size(290.dp)
-            .graphicsLayer { rotationZ = rotation }
-            .clip(CircleShape)
-            .background(Color(0xFF111111))
-            .border(8.dp, Color(0xFF222222), CircleShape)
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onVerticalDrag = { change, amount ->
-                        change.consume()
-                        dragDistance += amount
-                    },
-                    onDragEnd = {
-                        when {
-                            dragDistance < -80f -> onSwipeUp()
-                            dragDistance > 80f -> onSwipeDown()
-                        }
-                        dragDistance = 0f
-                    },
-                    onDragCancel = { dragDistance = 0f },
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(260.dp)
-                .border(2.dp, Color(0xFF333333), CircleShape),
-        )
-        Box(
-            modifier = Modifier
-                .size(230.dp)
-                .border(2.dp, Color(0xFF292929), CircleShape),
-        )
-        if (artworkUri != null) {
-            AsyncImage(
-                model = artworkUri,
-                contentDescription = "专辑封面",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(170.dp).clip(CircleShape),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(170.dp)
-                    .clip(CircleShape)
-                    .background(Brush.radialGradient(listOf(Color(0xFF8E5BD4), Color(0xFF3A1E64)))),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("音乐", color = Color.White)
-            }
-        }
-        Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF111111)),
         )
     }
 }

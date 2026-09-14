@@ -18,6 +18,7 @@ class PlaybackDeviceViewModel @Inject constructor(
     private val playbackController: PlaybackController,
 ) : ViewModel() {
     val devices = deviceManager.devices
+    val currentDeviceName = deviceManager.currentDeviceName
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 

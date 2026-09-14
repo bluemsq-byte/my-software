@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.audioplayer.core.model.AudioTrack
 import com.example.audioplayer.core.model.PlaylistItem
+import com.example.audioplayer.core.playlist.PlaylistSelection
 import com.example.audioplayer.core.model.PlaylistSummary
 import com.example.audioplayer.core.playback.PlaybackController
 import com.example.audioplayer.core.repository.PlaylistRepository
@@ -52,6 +53,8 @@ data class PlaylistDetailUiState(
     val items: List<PlaylistItem> = emptyList(),
     val localTracks: List<AudioTrack> = emptyList(),
     val showAddLocalDialog: Boolean = false,
+    val selectionMode: Boolean = false,
+    val selectedItemIds: Set<Long> = emptySet(),
 )
 
 @HiltViewModel
@@ -77,8 +80,46 @@ class PlaylistDetailViewModel @Inject constructor(
     }
 
     fun playAll(startIndex: Int = 0) {
+        playAt(startIndex)
+    }
+
+    fun playAt(index: Int) {
         val tracks = _state.value.items.map(PlaylistItem::toAudioTrack)
-        if (tracks.isNotEmpty()) playbackController.play(tracks, startIndex.coerceIn(tracks.indices))
+        if (tracks.isNotEmpty()) {
+            playbackController.play(tracks, index.coerceIn(tracks.indices))
+        }
+    }
+
+    fun enterSelectionMode() {
+        _state.value = _state.value.copy(selectionMode = true, selectedItemIds = emptySet())
+    }
+
+    fun exitSelectionMode() {
+        _state.value = _state.value.copy(selectionMode = false, selectedItemIds = emptySet())
+    }
+
+    fun toggleSelection(itemId: Long) {
+        val selected = _state.value.selectedItemIds
+        _state.value = _state.value.copy(
+            selectedItemIds = if (itemId in selected) selected - itemId else selected + itemId,
+        )
+    }
+
+    fun selectAll() {
+        _state.value = _state.value.copy(
+            selectedItemIds = _state.value.items.map { it.id }.toSet(),
+        )
+    }
+
+    fun playSelected() {
+        val selected = _state.value.selectedItemIds
+        val tracks = _state.value.items
+            .filter { it.id in selected }
+            .map(PlaylistItem::toAudioTrack)
+        if (tracks.isNotEmpty()) {
+            playbackController.play(tracks, 0)
+            exitSelectionMode()
+        }
     }
 
     fun remove(itemId: Long) {

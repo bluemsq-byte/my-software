@@ -121,6 +121,14 @@ class PlaybackController @Inject constructor(
         }
     }
 
+    fun seekToQueueItem(index: Int) {
+        val mediaController = controller ?: return
+        if (index in 0 until mediaController.mediaItemCount) {
+            mediaController.seekTo(index, 0L)
+            mediaController.play()
+        }
+    }
+
     fun moveQueueItem(fromIndex: Int, toIndex: Int) {
         val mediaController = controller ?: return
         if (fromIndex in 0 until mediaController.mediaItemCount &&

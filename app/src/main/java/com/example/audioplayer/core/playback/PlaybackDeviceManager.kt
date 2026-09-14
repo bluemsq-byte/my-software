@@ -43,6 +43,8 @@ class PlaybackDeviceManager @Inject constructor(
         .build()
     private val _devices = MutableStateFlow<List<PlaybackDevice>>(emptyList())
     val devices: StateFlow<List<PlaybackDevice>> = _devices.asStateFlow()
+    private val _currentDeviceName = MutableStateFlow("本机播放")
+    val currentDeviceName: StateFlow<String> = _currentDeviceName.asStateFlow()
     private var pendingTrack: com.example.audioplayer.core.model.AudioTrack? = null
 
     private val callback = object : MediaRouter.Callback() {
@@ -82,6 +84,10 @@ class PlaybackDeviceManager @Inject constructor(
     }
 
     fun refresh() {
+        _currentDeviceName.value = router.selectedRoute
+            ?.takeIf { it.isEnabled && it.deviceType != MediaRouter.RouteInfo.DEVICE_TYPE_BUILTIN_SPEAKER }
+            ?.name
+            ?: "本机播放"
         _devices.value = router.routes
             .filter { route ->
                 route.deviceType == MediaRouter.RouteInfo.DEVICE_TYPE_BLUETOOTH_A2DP ||
