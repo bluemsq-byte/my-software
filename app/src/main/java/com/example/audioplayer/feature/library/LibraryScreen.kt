@@ -62,6 +62,7 @@ import com.example.audioplayer.ui.formatDuration
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
+    initialTab: Int = 0,
     onAddConnection: () -> Unit,
     onOpenConnection: (ConnectionEntity) -> Unit,
     onEditConnection: (ConnectionEntity) -> Unit,
@@ -74,7 +75,7 @@ fun LibraryScreen(
     val recentPlays by viewModel.recentPlays.collectAsStateWithLifecycle()
     val connectionMessage by viewModel.connectionMessage.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(initialTab) }
     var localViewIsFolders by remember { mutableStateOf(false) }
     var hasPermission by remember { mutableStateOf(MediaPermission.isGranted(context)) }
 
@@ -102,7 +103,7 @@ fun LibraryScreen(
                 title = { Text("音乐库") },
                 actions = {
                     IconButton(onClick = onAddConnection) {
-                        Icon(Icons.Default.Add, contentDescription = "添加 NAS")
+                        Icon(Icons.Default.Add, contentDescription = "添加网络音乐")
                     }
                 },
             )
@@ -264,7 +265,13 @@ private fun LocalMusicContent(
                         ListItem(
                             headlineContent = { Text(folder.name) },
                             supportingContent = { Text("${folder.tracks.size} 首") },
-                            leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
+                            leadingContent = {
+                            Icon(
+                                Icons.Default.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                            )
+                        },
                             modifier = Modifier.clickable {
                                 onPlay(folder.tracks, 0)
                             },

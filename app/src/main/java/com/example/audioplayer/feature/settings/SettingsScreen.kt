@@ -16,16 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -46,6 +40,8 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.BuildConfig
+import com.example.audioplayer.core.settings.AppThemeColor
+import com.example.audioplayer.core.settings.DarkModeSetting
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,17 +49,12 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val connections by viewModel.connections.collectAsStateWithLifecycle()
     val backgroundPlayback by viewModel.backgroundPlaybackEnabled.collectAsStateWithLifecycle()
     val cacheUsage by viewModel.cacheUsage.collectAsStateWithLifecycle()
-    val bluetoothDevices by viewModel.bluetoothDevices.collectAsStateWithLifecycle()
+    val darkModeSetting by viewModel.darkModeSetting.collectAsStateWithLifecycle()
+    val themeColor by viewModel.themeColor.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) {
-        viewModel.bluetoothRouteManager.refresh()
-    }
 
     LaunchedEffect(message) {
         message?.let {
@@ -77,9 +68,7 @@ fun SettingsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -98,25 +87,45 @@ fun SettingsScreen(
             }
 
             item {
-                Text("NAS 连接", style = MaterialTheme.typography.titleMedium)
-            }
-            if (connections.isEmpty()) {
-                item { Text("尚未添加 NAS 连接") }
-            } else {
-                items(connections, key = { it.id }) { connection ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        ListItem(
-                            headlineContent = { Text(connection.name) },
-                            supportingContent = {
-                                Text("${connection.protocol.name} · ${connection.host}")
-                            },
-                            leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
-                            trailingContent = {
-                                IconButton(onClick = { viewModel.deleteConnection(connection) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "删除")
-                                }
+                Text("外观", style = MaterialTheme.typography.titleMedium)
+                ListItem(
+                    headlineContent = { Text("自动深色模式") },
+                    supportingContent = { Text("开启后跟随手机系统") },
+                    trailingContent = {
+                        Switch(
+                            checked = darkModeSetting == DarkModeSetting.SYSTEM,
+                            onCheckedChange = { enabled ->
+                                viewModel.setDarkModeSetting(
+                                    if (enabled) DarkModeSetting.SYSTEM else DarkModeSetting.LIGHT,
+                                )
                             },
                         )
+                    },
+                )
+                if (darkModeSetting != DarkModeSetting.SYSTEM) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = darkModeSetting == DarkModeSetting.LIGHT,
+                            onClick = { viewModel.setDarkModeSetting(DarkModeSetting.LIGHT) },
+                            label = { Text("浅色") },
+                        )
+                        FilterChip(
+                            selected = darkModeSetting == DarkModeSetting.DARK,
+                            onClick = { viewModel.setDarkModeSetting(DarkModeSetting.DARK) },
+                            label = { Text("深色") },
+                        )
+                    }
+                }
+                Text("颜色主题", style = MaterialTheme.typography.bodyLarge)
+                AppThemeColor.entries.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { color ->
+                            FilterChip(
+                                selected = themeColor == color,
+                                onClick = { viewModel.setThemeColor(color) },
+                                label = { Text(themeLabel(color)) },
+                            )
+                        }
                     }
                 }
             }
@@ -126,53 +135,12 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("缓存占用") },
                     supportingContent = {
-                        Text(
-                            "总计 ${formatBytes(cacheUsage.totalBytes)}，网络 ${formatBytes(cacheUsage.networkBytes)}",
-                        )
+                        Text("总计 ${formatBytes(cacheUsage.totalBytes)}，网络 ${formatBytes(cacheUsage.networkBytes)}")
                     },
                     trailingContent = {
                         Button(onClick = viewModel::clearCache) { Text("清除缓存") }
                     },
                 )
-            }
-
-            item {
-                Text("蓝牙输出", style = MaterialTheme.typography.titleMedium)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) !=
-                    PackageManager.PERMISSION_GRANTED
-                ) {
-                    Button(
-                        onClick = {
-                            bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                        },
-                    ) {
-                        Text("授权并扫描蓝牙设备")
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = { viewModel.bluetoothRouteManager.refresh() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("刷新蓝牙输出设备")
-                    }
-                }
-                if (bluetoothDevices.isEmpty()) {
-                    Text("未发现已配对的蓝牙音频设备")
-                } else {
-                    bluetoothDevices.forEach { device ->
-                        ListItem(
-                            headlineContent = { Text(device.name) },
-                            supportingContent = { Text(if (device.isSelected) "当前输出" else "点击尝试切换") },
-                            trailingContent = {
-                                Button(
-                                    onClick = { viewModel.selectBluetoothDevice(device.id) },
-                                    enabled = !device.isSelected,
-                                ) { Text("选择") }
-                            },
-                        )
-                    }
-                }
             }
 
             item {
@@ -187,53 +155,35 @@ fun SettingsScreen(
                         Manifest.permission.READ_EXTERNAL_STORAGE
                     },
                 ) == PackageManager.PERMISSION_GRANTED
-                PermissionRow(
-                    title = "本地音乐权限",
-                    granted = mediaGranted,
-                    onOpenSettings = { context.openAppSettings() },
-                )
+                PermissionRow("本地音乐权限", mediaGranted) { context.openAppSettings() }
             }
             item {
                 val notificationGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                    ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.POST_NOTIFICATIONS,
-                    ) == PackageManager.PERMISSION_GRANTED
-                PermissionRow(
-                    title = "通知权限",
-                    granted = notificationGranted,
-                    onOpenSettings = { context.openAppSettings() },
-                )
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
+                PermissionRow("通知权限", notificationGranted) { context.openAppSettings() }
             }
             item {
                 val alarmGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
                     context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
-                PermissionRow(
-                    title = "精确闹钟权限",
-                    granted = alarmGranted,
-                    onOpenSettings = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            context.startActivity(
-                                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                },
-                            )
-                        }
-                    },
-                )
+                PermissionRow("精确闹钟权限", alarmGranted) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        context.startActivity(
+                            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            },
+                        )
+                    }
+                }
             }
             item {
                 OutlinedButton(
                     onClick = viewModel::rescanLocalMusic,
                     modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("重新扫描本地音乐")
-                }
+                ) { Text("重新扫描本地音乐") }
             }
 
-            item {
-                HorizontalDivider()
-            }
+            item { HorizontalDivider() }
             item {
                 ListItem(
                     headlineContent = { Text("音频播放器") },
@@ -245,31 +195,32 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun PermissionRow(
-    title: String,
-    granted: Boolean,
-    onOpenSettings: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
+private fun PermissionRow(title: String, granted: Boolean, onOpenSettings: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title)
             Text(
                 if (granted) "已开启" else "未开启",
                 style = MaterialTheme.typography.bodySmall,
-                color = if (granted) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.error
-                },
+                color = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
             )
         }
-        if (!granted) {
-            Button(onClick = onOpenSettings) { Text("去开启") }
-        }
+        if (!granted) Button(onClick = onOpenSettings) { Text("去开启") }
     }
+}
+
+private fun themeLabel(color: AppThemeColor): String = when (color) {
+    AppThemeColor.SKY_BLUE -> "天空蓝"
+    AppThemeColor.FOREST_GREEN -> "森林绿"
+    AppThemeColor.VIOLET -> "紫罗兰"
+    AppThemeColor.SUNSET_ORANGE -> "日落橙"
+    AppThemeColor.SAKURA_PINK -> "樱花粉"
+    AppThemeColor.TEAL -> "青绿色"
+}
+
+private fun formatBytes(bytes: Long): String {
+    val mb = bytes / 1024.0 / 1024.0
+    return if (mb >= 1.0) "%.1f MB".format(mb) else "%.0f KB".format(bytes / 1024.0)
 }
 
 private fun android.content.Context.openAppSettings() {
@@ -278,8 +229,4 @@ private fun android.content.Context.openAppSettings() {
             data = Uri.parse("package:$packageName")
         },
     )
-}
-private fun formatBytes(bytes: Long): String {
-    val mb = bytes / 1024.0 / 1024.0
-    return if (mb >= 1.0) "%.1f MB".format(mb) else "%.0f KB".format(bytes / 1024.0)
 }

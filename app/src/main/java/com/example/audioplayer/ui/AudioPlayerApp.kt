@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.audioplayer.core.playback.PlaybackController
 import com.example.audioplayer.feature.browser.BrowserScreen
+import com.example.audioplayer.feature.connection.AddNetworkMusicScreen
 import com.example.audioplayer.feature.connection.ConnectionEditorScreen
 import com.example.audioplayer.feature.connection.SmbSharePickerScreen
 import com.example.audioplayer.feature.library.LibraryScreen
@@ -43,6 +44,7 @@ private const val ROUTE_PLAYLISTS = "playlists"
 private const val ROUTE_PLAYLIST_DETAIL = "playlist_detail"
 private const val ROUTE_PLAYER = "player"
 private const val ROUTE_CONNECTION_EDITOR = "connection"
+private const val ROUTE_ADD_NETWORK_MUSIC = "add_network_music"
 private const val ROUTE_TIMER_EDITOR = "timer_editor"
 private const val ROUTE_BROWSER = "browser"
 private const val ROUTE_SMB_SHARES = "smb_shares"
@@ -52,6 +54,7 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route.orEmpty()
+    val currentRouteBase = currentRoute.substringBefore('?')
     val playbackState by playbackController.state.collectAsStateWithLifecycle()
 
     playbackController.connect()
@@ -67,7 +70,7 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                     )
                     NavigationBar {
                         NavigationBarItem(
-                            selected = currentRoute == ROUTE_LIBRARY,
+                            selected = currentRouteBase == ROUTE_LIBRARY,
                             onClick = {
                                 navController.navigate(ROUTE_LIBRARY) {
                                     popUpTo(ROUTE_LIBRARY) { inclusive = true }
@@ -109,9 +112,18 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
             startDestination = ROUTE_LIBRARY,
             modifier = Modifier.padding(padding),
         ) {
-            composable(ROUTE_LIBRARY) {
+            composable(
+                route = "$ROUTE_LIBRARY?tab={tab}",
+                arguments = listOf(
+                    navArgument("tab") {
+                        type = NavType.StringType
+                        defaultValue = "local"
+                    },
+                ),
+            ) { entry ->
                 LibraryScreen(
-                    onAddConnection = { navController.navigate(ROUTE_CONNECTION_EDITOR) },
+                    initialTab = if (entry.arguments?.getString("tab") == "network") 1 else 0,
+                    onAddConnection = { navController.navigate(ROUTE_ADD_NETWORK_MUSIC) },
                     onOpenConnection = { connection ->
                         if (connection.protocol == com.example.audioplayer.core.model.ConnectionProtocol.SMB &&
                             connection.selectedShare.isNullOrBlank()
@@ -164,6 +176,9 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
             ) {
                 PlaylistDetailScreen(
                     onBack = { navController.popBackStack() },
+                    onAddNetworkSongs = {
+                        navController.navigate("$ROUTE_LIBRARY?tab=network")
+                    },
                 )
             }
             composable(ROUTE_SETTINGS) {
@@ -175,10 +190,24 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                     onBack = { navController.popBackStack() },
                 )
             }
+            composable(ROUTE_ADD_NETWORK_MUSIC) {
+                AddNetworkMusicScreen(
+                    onBack = { navController.popBackStack() },
+                    onChooseProtocol = { protocol ->
+                        navController.navigate(
+                            "$ROUTE_CONNECTION_EDITOR?protocol=${protocol.name}",
+                        )
+                    },
+                )
+            }
             composable(
-                route = "$ROUTE_CONNECTION_EDITOR?connectionId={connectionId}",
+                route = "$ROUTE_CONNECTION_EDITOR?connectionId={connectionId}&protocol={protocol}",
                 arguments = listOf(
                     navArgument("connectionId") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                    navArgument("protocol") {
                         type = NavType.StringType
                         defaultValue = ""
                     },

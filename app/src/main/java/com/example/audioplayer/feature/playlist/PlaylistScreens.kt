@@ -126,6 +126,7 @@ fun PlaylistListScreen(
 @Composable
 fun PlaylistDetailScreen(
     onBack: () -> Unit,
+    onAddNetworkSongs: () -> Unit,
     viewModel: PlaylistDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -141,8 +142,13 @@ fun PlaylistDetailScreen(
                     }
                 },
                 actions = {
-                    OutlinedButton(onClick = viewModel::openAddLocalDialog) {
-                        Text("添加本地歌曲")
+                    Row {
+                        OutlinedButton(onClick = viewModel::openAddLocalDialog) {
+                            Text("添加本地")
+                        }
+                        OutlinedButton(onClick = onAddNetworkSongs) {
+                            Text("添加网络")
+                        }
                     }
                 },
             )

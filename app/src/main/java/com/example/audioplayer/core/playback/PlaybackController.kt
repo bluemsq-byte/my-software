@@ -24,6 +24,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class PlaybackMode {
+    SEQUENTIAL,
+    REPEAT_ALL,
+    REPEAT_ONE,
+}
+
 data class PlaybackUiState(
     val isConnected: Boolean = false,
     val isPlaying: Boolean = false,
@@ -35,6 +41,7 @@ data class PlaybackUiState(
     val durationMillis: Long = 0L,
     val hasPrevious: Boolean = false,
     val hasNext: Boolean = false,
+    val playbackMode: PlaybackMode = PlaybackMode.SEQUENTIAL,
 )
 
 @Singleton
@@ -70,6 +77,8 @@ class PlaybackController @Inject constructor(
         )
     }
 
+    fun currentTrack(): AudioTrack? = _state.value.currentTrackId?.let(tracksById::get)
+
     fun play(tracks: List<AudioTrack>, startIndex: Int = 0) {
         if (tracks.isEmpty()) return
         tracksById = tracks.associateBy(AudioTrack::id)
@@ -93,6 +102,15 @@ class PlaybackController @Inject constructor(
 
     fun previous() {
         controller?.seekToPreviousMediaItem()
+    }
+
+    fun setPlaybackMode(mode: PlaybackMode) {
+        val mediaController = controller ?: return
+        mediaController.repeatMode = when (mode) {
+            PlaybackMode.SEQUENTIAL -> Player.REPEAT_MODE_OFF
+            PlaybackMode.REPEAT_ALL -> Player.REPEAT_MODE_ALL
+            PlaybackMode.REPEAT_ONE -> Player.REPEAT_MODE_ONE
+        }
     }
 
     fun seekTo(positionMillis: Long) {
@@ -130,6 +148,11 @@ class PlaybackController @Inject constructor(
             durationMillis = duration.coerceAtLeast(0L),
             hasPrevious = hasPreviousMediaItem(),
             hasNext = hasNextMediaItem(),
+            playbackMode = when (repeatMode) {
+                Player.REPEAT_MODE_ONE -> PlaybackMode.REPEAT_ONE
+                Player.REPEAT_MODE_ALL -> PlaybackMode.REPEAT_ALL
+                else -> PlaybackMode.SEQUENTIAL
+            },
         )
     }
 

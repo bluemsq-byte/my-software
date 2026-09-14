@@ -42,7 +42,16 @@ class ConnectionEditorViewModel @Inject constructor(
     private val remoteFileRepository: RemoteFileRepository,
 ) : ViewModel() {
     private val connectionId: String? = savedStateHandle["connectionId"]
-    private val _state = MutableStateFlow(ConnectionEditorUiState(id = connectionId.orEmpty()))
+    private val requestedProtocol: ConnectionProtocol? = savedStateHandle.get<String>("protocol")
+        ?.takeIf { it.isNotBlank() }
+        ?.let { runCatching { ConnectionProtocol.valueOf(it) }.getOrNull() }
+    private val _state = MutableStateFlow(
+        ConnectionEditorUiState(
+            id = connectionId.orEmpty(),
+            protocol = requestedProtocol ?: ConnectionProtocol.WEBDAV,
+            port = if (requestedProtocol == ConnectionProtocol.SMB) "445" else "5006",
+        ),
+    )
     val state: StateFlow<ConnectionEditorUiState> = _state.asStateFlow()
 
     init {

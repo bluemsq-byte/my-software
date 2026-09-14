@@ -1,5 +1,9 @@
 package com.example.audioplayer.feature.player
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,9 +19,11 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,14 +39,19 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.feature.timer.SleepTimerViewModel
 import com.example.audioplayer.core.playback.PlaybackController
+import com.example.audioplayer.core.playback.PlaybackMode
 import com.example.audioplayer.ui.formatDuration
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,11 +60,23 @@ fun PlayerScreen(
     playbackController: PlaybackController,
     onBack: () -> Unit,
     sleepTimerViewModel: SleepTimerViewModel = hiltViewModel(),
+    deviceViewModel: PlaybackDeviceViewModel = hiltViewModel(),
 ) {
+    val context = LocalContext.current
     val state by playbackController.state.collectAsStateWithLifecycle()
     val remainingMillis by sleepTimerViewModel.remainingMillis.collectAsStateWithLifecycle()
     var draggingValue by remember { mutableFloatStateOf(-1f) }
+    val devices by deviceViewModel.devices.collectAsStateWithLifecycle()
     var showSleepTimerDialog by remember { mutableStateOf(false) }
+    var showDeviceDialog by remember { mutableStateOf(false) }
+    val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            deviceViewModel.refresh()
+            showDeviceDialog = true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -65,6 +88,23 @@ fun PlayerScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.BLUETOOTH_CONNECT,
+                                ) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                            } else {
+                                deviceViewModel.refresh()
+                                showDeviceDialog = true
+                            }
+                        },
+                    ) {
+                        Icon(Icons.Default.Speaker, contentDescription = "选择播放设备")
+                    }
                     IconButton(onClick = { showSleepTimerDialog = true }) {
                         Icon(Icons.Default.Timer, contentDescription = "倒计时停止")
                     }
@@ -123,6 +163,24 @@ fun PlayerScreen(
                 }
             }
 
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = state.playbackMode == PlaybackMode.SEQUENTIAL,
+                    onClick = { playbackController.setPlaybackMode(PlaybackMode.SEQUENTIAL) },
+                    label = { Text("顺序") },
+                )
+                FilterChip(
+                    selected = state.playbackMode == PlaybackMode.REPEAT_ALL,
+                    onClick = { playbackController.setPlaybackMode(PlaybackMode.REPEAT_ALL) },
+                    label = { Text("列表循环") },
+                )
+                FilterChip(
+                    selected = state.playbackMode == PlaybackMode.REPEAT_ONE,
+                    onClick = { playbackController.setPlaybackMode(PlaybackMode.REPEAT_ONE) },
+                    label = { Text("单曲循环") },
+                )
+            }
+
             remainingMillis?.let { remaining ->
                 Text("倒计时停止：${remaining / 60_000 + 1} 分钟")
             }
@@ -153,6 +211,42 @@ fun PlayerScreen(
                 }
             }
         }
+    }
+
+    if (showDeviceDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeviceDialog = false },
+            title = { Text("选择播放设备") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (devices.isEmpty()) {
+                        Text("未发现可用设备，请确认蓝牙或投屏设备已开启")
+                    } else {
+                        devices.forEach { device ->
+                            TextButton(
+                                onClick = {
+                                    deviceViewModel.select(device.id)
+                                    showDeviceDialog = false
+                                },
+                            ) {
+                                Text(
+                                    (if (device.isSelected) "✓ " else "") +
+                                        device.name +
+                                        when (device.type.name) {
+                                            "CAST" -> "（Cast）"
+                                            "BLUETOOTH" -> "（蓝牙）"
+                                            else -> ""
+                                        },
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDeviceDialog = false }) { Text("关闭") }
+            },
+        )
     }
 
     if (showSleepTimerDialog) {

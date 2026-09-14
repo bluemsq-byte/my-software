@@ -1,4 +1,4 @@
-# 音频播放器 v1.1.1
+# 音频播放器 v1.2.0
 
 安卓本地与群晖 NAS 音频播放器。首页提供本地音乐库、网络音乐、最近播放和播放列表入口。
 
@@ -12,18 +12,23 @@
 - 本地音乐检索和当前 NAS 文件夹检索。
 - 最近播放记录和清空功能。
 - 定时开始播放、定时停止、一次或按星期重复。
-- 定时任务支持选择一个或多个文件，也支持整个文件夹。
+- 定时任务支持选择文件或整个文件夹，星期选择包含周日。
+- 播放页支持顺序播放、列表循环、单曲循环和播放设备选择。
+- 播放设备支持蓝牙、Android 媒体路由和 Chromecast/Google Cast。
+- 本地和 NAS 音乐可通过局域网代理发送到 Chromecast。
+- 播放列表支持添加网络歌曲。
+- 设置页支持自动深色模式、浅色/深色切换和六种颜色主题。
 - 锁屏/熄屏定时执行、开机后恢复定时、精确闹钟权限引导。
 - 5/10/15/30/60 分钟倒计时停止。
 - 播放列表：新建、添加本地或 NAS 歌曲、移除、排序和播放全部。
 - 设置页支持缓存统计与清理。
-- 设置页列出已配对蓝牙音频设备并尝试切换输出。
+- 设置页不再重复管理 NAS 和蓝牙，相关功能统一放在网络音乐页和播放页。
 - NAS 密码使用 Android Keystore 加密保存。
 
 ## 安装包
 
-- Release APK：`dist/audio-player-v1.1.1.apk`
-- Debug APK：`dist/audio-player-v1.1.1-debug.apk`
+- Release APK：`dist/audio-player-v1.2.0.apk`
+- Debug APK：`dist/audio-player-v1.2.0-debug.apk`
 - SHA-256：`dist/SHA256SUMS.txt`
 
 Release APK 已使用本项目的本地发布密钥签名。密钥位于 `.secrets/audio-player-release.jks`，签名配置位于
