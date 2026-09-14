@@ -23,8 +23,8 @@ android {
         applicationId = "com.example.audioplayer"
         minSdk = 28
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.3.1"
+        versionCode = 7
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -109,6 +109,7 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.mediarouter)
+    implementation(libs.coil.compose)
     implementation(libs.play.services.cast.framework)
     implementation(libs.androidx.media3.cast)
     implementation(libs.androidx.media3.exoplayer)
