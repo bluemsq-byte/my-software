@@ -12,6 +12,8 @@ import com.example.audioplayer.core.network.smb.SmbConnectionConfig
 import com.example.audioplayer.core.network.smb.SmbShareEnumerator
 import com.example.audioplayer.core.network.webdav.WebDavClient
 import com.example.audioplayer.core.playback.RemotePlaybackQueueBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,17 +24,17 @@ class RemoteFileRepository @Inject constructor(
     private val smbClient: SmbClient,
     private val smbShareEnumerator: SmbShareEnumerator,
 ) {
-    suspend fun list(connectionId: String, path: String = "/"): List<RemoteEntry> {
+    suspend fun list(connectionId: String, path: String = "/"): List<RemoteEntry> = withContext(Dispatchers.IO) {
         val connection = requireNotNull(connectionRepository.get(connectionId)) {
             "Connection not found: $connectionId"
         }
-        return when (connection.protocol) {
+        when (connection.protocol) {
             ConnectionProtocol.WEBDAV -> webDavClient.list(connection.toWebDavConfig(), path)
             ConnectionProtocol.SMB -> smbClient.list(connection.toSmbConfig(), path)
         }
     }
 
-    suspend fun test(connection: RemoteConnection) {
+    suspend fun test(connection: RemoteConnection) = withContext(Dispatchers.IO) {
         when (connection.protocol) {
             ConnectionProtocol.WEBDAV -> webDavClient.testConnection(connection.toWebDavConfig())
             ConnectionProtocol.SMB -> {
@@ -46,9 +48,9 @@ class RemoteFileRepository @Inject constructor(
         }
     }
 
-    fun listSmbShares(connection: RemoteConnection): List<String> {
+    suspend fun listSmbShares(connection: RemoteConnection): List<String> = withContext(Dispatchers.IO) {
         require(connection.protocol == ConnectionProtocol.SMB)
-        return smbShareEnumerator.listShares(
+        smbShareEnumerator.listShares(
             host = connection.host,
             port = connection.port ?: 445,
             domain = connection.domain.orEmpty(),

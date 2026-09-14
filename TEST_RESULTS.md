@@ -1,19 +1,20 @@
 # 测试结果
 
 测试日期：2026-09-14
-版本：1.1.0
+版本：1.1.1
 
 ## 通过项
 
 - Debug 单元测试：23 项通过。
 - Release 单元测试：通过。
-- Android 仪器测试：13 项通过。
+- Android 仪器测试：14 项通过。
 - Android 模拟器：Android 15，API 35，x86_64。
 - Android Lint：0 个错误，通过。
 - Debug APK：构建成功。
 - 签名 Release APK：构建成功。
 - Release APK：模拟器冷启动成功，无崩溃。
-- 实际安装版本确认：versionCode 2，versionName 1.1.0。
+- 手机端主线程网络问题：已修复并加入回归测试。
+- 实际安装版本确认：versionCode 3，versionName 1.1.1。
 
 ## 仪器测试覆盖
 
@@ -32,13 +33,29 @@
 - 蓝牙路由管理器初始化。
 - 模拟器集成测试覆盖 WebDAV 与 Media3 依赖启动。
 
+## 修复版主线程回归
+
+- Android 仪器测试在 `Dispatchers.Main` 入口调用 SMB 连接测试，验证网络操作切换到 IO 线程。
+- 修复后在 Android 15 模拟器上重新连接真实 NAS 成功。
+
 ## 真实 NAS SMB 验收
+
+### 主机 JVM
 
 - NAS：192.168.2.34:445
 - 账号认证：通过
 - 共享枚举：通过，共发现 11 个可访问共享
 - 共享连接：通过，成功连接 music
 - 目录读取：通过，music 根目录读取到 27 个条目
+
+### Android 运行时
+
+- Android 模拟器：Android 15，API 35，x86_64
+- 账号认证：通过
+- 共享枚举：通过
+- music 共享连接：通过
+- music 根目录读取：通过
+- 验证了修复后的 IO 线程执行路径
 - 测试使用的密码未写入源码、测试文件、日志或 Git
 
 ## 后续现场验收
