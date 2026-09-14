@@ -41,6 +41,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.example.audioplayer.ui.components.GlassCard
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -68,6 +70,7 @@ fun PlaylistListScreen(
     }
 
     Scaffold(
+            containerColor = Color.Transparent,
         topBar = { TopAppBar(title = { Text("播放列表") }) },
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
@@ -135,6 +138,7 @@ fun PlaylistDetailScreen(
     var selectedTracks by remember { mutableStateOf(setOf<AudioTrack>()) }
 
     Scaffold(
+            containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(state.name.ifBlank { "播放列表" }) },
@@ -202,7 +206,7 @@ fun PlaylistDetailScreen(
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-                    Card(
+                    GlassCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 4.dp)

@@ -28,6 +28,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.audioplayer.ui.components.GlassCard
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +46,7 @@ fun TimerListScreen(
     val timers by viewModel.timers.collectAsStateWithLifecycle()
 
     Scaffold(
+            containerColor = Color.Transparent,
         topBar = { TopAppBar(title = { Text("定时任务") }) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddTimer) {
@@ -73,7 +76,7 @@ fun TimerListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(timers, key = { it.id }) { task ->
-                    Card(
+                    GlassCard(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {

@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -45,6 +46,7 @@ import com.example.audioplayer.feature.playlist.PlaylistListScreen
 import com.example.audioplayer.feature.settings.SettingsScreen
 import com.example.audioplayer.feature.timer.TimerEditorScreen
 import com.example.audioplayer.feature.timer.TimerListScreen
+import com.example.audioplayer.ui.components.GlassBackground
 import com.example.audioplayer.ui.components.MiniPlayer
 
 private const val ROUTE_LIBRARY = "library"
@@ -70,8 +72,10 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
 
     playbackController.connect()
 
-    Scaffold(
-        bottomBar = {
+    GlassBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            bottomBar = {
             if (currentRoute != ROUTE_PLAYER) {
                 Column {
                     AnimatedVisibility(
@@ -285,6 +289,7 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                     onOpenPlayer = { navController.navigate(ROUTE_PLAYER) },
                 )
             }
+        }
         }
     }
 }

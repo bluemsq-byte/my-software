@@ -49,6 +49,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.audioplayer.ui.components.GlassCard
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -97,6 +99,7 @@ fun LibraryScreen(
     }
 
     Scaffold(
+            containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("音乐库") },
@@ -320,7 +323,7 @@ private fun NetworkMusicContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(connections, key = { it.id }) { connection ->
-                Card(
+                GlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onOpenConnection(connection) },
@@ -357,15 +360,21 @@ private fun AudioTrackRow(
     track: AudioTrack,
     onClick: () -> Unit,
 ) {
-    ListItem(
-        headlineContent = {
-            Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        },
-        supportingContent = {
-            Text(track.artist ?: "未知歌手", maxLines = 1, overflow = TextOverflow.Ellipsis)
-        },
-        leadingContent = { Icon(Icons.Default.MusicNote, contentDescription = null) },
-        trailingContent = { Text(formatDuration(track.durationMillis)) },
-        modifier = Modifier.clickable(onClick = onClick),
-    )
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        ListItem(
+            headlineContent = {
+                Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            },
+            supportingContent = {
+                Text(track.artist ?: "未知歌手", maxLines = 1, overflow = TextOverflow.Ellipsis)
+            },
+            leadingContent = { Icon(Icons.Default.MusicNote, contentDescription = null) },
+            trailingContent = { Text(formatDuration(track.durationMillis)) },
+            modifier = Modifier.clickable(onClick = onClick),
+        )
+    }
 }

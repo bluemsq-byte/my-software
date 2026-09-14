@@ -32,12 +32,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.network.RemoteEntry
 import com.example.audioplayer.core.network.RemotePath
+import com.example.audioplayer.ui.components.GlassCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +53,7 @@ fun BrowserScreen(
     var pendingPlaylistEntry by remember { mutableStateOf<RemoteEntry?>(null) }
 
     Scaffold(
+            containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
@@ -193,23 +196,29 @@ private fun EntryRow(
     onClick: () -> Unit,
     onAddToPlaylist: (() -> Unit)?,
 ) {
-    ListItem(
-        headlineContent = {
-            Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        },
-        leadingContent = {
-            Icon(
-                imageVector = if (entry.isDirectory) Icons.Default.Folder else Icons.Default.AudioFile,
-                contentDescription = null,
-            )
-        },
-        trailingContent = onAddToPlaylist?.let {
-            {
-                androidx.compose.material3.OutlinedButton(onClick = it) {
-                    Text("加列表")
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        ListItem(
+            headlineContent = {
+                Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            },
+            leadingContent = {
+                Icon(
+                    imageVector = if (entry.isDirectory) Icons.Default.Folder else Icons.Default.AudioFile,
+                    contentDescription = null,
+                )
+            },
+            trailingContent = onAddToPlaylist?.let {
+                {
+                    androidx.compose.material3.OutlinedButton(onClick = it) {
+                        Text("加列表")
+                    }
                 }
-            }
-        },
-        modifier = Modifier.clickable(onClick = onClick),
-    )
+            },
+            modifier = Modifier.clickable(onClick = onClick),
+        )
+    }
 }
