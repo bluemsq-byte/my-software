@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
@@ -154,8 +155,6 @@ fun LibraryScreen(
                     onOpenConnection = onOpenConnection,
                     onDeleteConnection = viewModel::deleteConnection,
                     onEditConnection = onEditConnection,
-                    onTestConnection = viewModel::testConnection,
-                    testingConnectionId = testingConnectionId,
                 )
             }
         }
@@ -335,8 +334,6 @@ private fun NetworkMusicContent(
     onOpenConnection: (ConnectionEntity) -> Unit,
     onDeleteConnection: (ConnectionEntity) -> Unit,
     onEditConnection: (ConnectionEntity) -> Unit,
-    onTestConnection: (ConnectionEntity) -> Unit,
-    testingConnectionId: String?,
 ) {
     if (connections.isEmpty()) {
         Column(
@@ -374,25 +371,21 @@ private fun NetworkMusicContent(
                 ) {
                     ListItem(
                         headlineContent = { Text(connection.name) },
-                        supportingContent = {
-                            Text(
-                                "${connection.protocol.name} · ${connection.host}${connection.port?.let { ":$it" }.orEmpty()}",
+                        supportingContent = { Text(connection.protocol.name) },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
                             )
                         },
-                        leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
                         trailingContent = {
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                OutlinedButton(
-                                    onClick = { onTestConnection(connection) },
-                                    enabled = testingConnectionId != connection.id,
-                                ) {
-                                    Text(if (testingConnectionId == connection.id) "测试中" else "测试")
-                                }
                                 OutlinedButton(onClick = { onEditConnection(connection) }) {
                                     Text("编辑")
                                 }
-                                OutlinedButton(onClick = { onDeleteConnection(connection) }) {
-                                    Text("删除")
+                                IconButton(onClick = { onDeleteConnection(connection) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "删除网络连接")
                                 }
                             }
                         },

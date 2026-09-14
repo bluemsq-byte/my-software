@@ -1,6 +1,13 @@
 package com.example.audioplayer.ui
 
 import android.net.Uri
+import android.animation.ValueAnimator
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -9,6 +16,7 @@ import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -63,12 +71,18 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
         bottomBar = {
             if (currentRoute != ROUTE_PLAYER) {
                 Column {
-                    MiniPlayer(
-                        state = playbackState,
-                        controller = playbackController,
-                        onClick = { navController.navigate(ROUTE_PLAYER) },
-                    )
-                    NavigationBar {
+                    AnimatedVisibility(
+                        visible = playbackState.currentTrackId != null,
+                        enter = slideInVertically { it },
+                        exit = slideOutVertically { it },
+                    ) {
+                        MiniPlayer(
+                            state = playbackState,
+                            controller = playbackController,
+                            onClick = { navController.navigate(ROUTE_PLAYER) },
+                        )
+                    }
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
                         NavigationBarItem(
                             selected = currentRouteBase == ROUTE_LIBRARY,
                             onClick = {
@@ -111,6 +125,10 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
             navController = navController,
             startDestination = ROUTE_LIBRARY,
             modifier = Modifier.padding(padding),
+            enterTransition = { fadeIn(tween(animationDuration())) },
+            exitTransition = { fadeOut(tween(animationDuration())) },
+            popEnterTransition = { fadeIn(tween(animationDuration())) },
+            popExitTransition = { fadeOut(tween(animationDuration())) },
         ) {
             composable(
                 route = "$ROUTE_LIBRARY?tab={tab}",
@@ -184,7 +202,15 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
             composable(ROUTE_SETTINGS) {
                 SettingsScreen()
             }
-            composable(ROUTE_PLAYER) {
+            composable(
+                route = ROUTE_PLAYER,
+                enterTransition = {
+                    slideInVertically(tween(animationDuration())) { it / 3 } + fadeIn(tween(animationDuration()))
+                },
+                exitTransition = {
+                    slideOutVertically(tween(animationDuration())) { it / 3 } + fadeOut(tween(animationDuration()))
+                },
+            ) {
                 PlayerScreen(
                     playbackController = playbackController,
                     onBack = { navController.popBackStack() },
@@ -251,6 +277,8 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
     }
 }
 
+
+private fun animationDuration(): Int = if (ValueAnimator.areAnimatorsEnabled()) 260 else 0
 
 private fun browserRoute(connectionId: String, path: String = "/"): String {
     return "$ROUTE_BROWSER/${Uri.encode(connectionId)}?path=${Uri.encode(path)}"

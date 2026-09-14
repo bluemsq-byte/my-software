@@ -30,6 +30,13 @@ enum class PlaybackMode {
     REPEAT_ONE,
 }
 
+data class QueueTrack(
+    val mediaId: String,
+    val title: String,
+    val artist: String?,
+    val isCurrent: Boolean,
+)
+
 data class PlaybackUiState(
     val isConnected: Boolean = false,
     val isPlaying: Boolean = false,
@@ -42,6 +49,7 @@ data class PlaybackUiState(
     val hasPrevious: Boolean = false,
     val hasNext: Boolean = false,
     val playbackMode: PlaybackMode = PlaybackMode.SEQUENTIAL,
+    val queue: List<QueueTrack> = emptyList(),
 )
 
 @Singleton
@@ -110,6 +118,22 @@ class PlaybackController @Inject constructor(
             PlaybackMode.SEQUENTIAL -> Player.REPEAT_MODE_OFF
             PlaybackMode.REPEAT_ALL -> Player.REPEAT_MODE_ALL
             PlaybackMode.REPEAT_ONE -> Player.REPEAT_MODE_ONE
+        }
+    }
+
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        val mediaController = controller ?: return
+        if (fromIndex in 0 until mediaController.mediaItemCount &&
+            toIndex in 0 until mediaController.mediaItemCount
+        ) {
+            mediaController.moveMediaItem(fromIndex, toIndex)
+        }
+    }
+
+    fun removeQueueItem(index: Int) {
+        val mediaController = controller ?: return
+        if (index in 0 until mediaController.mediaItemCount) {
+            mediaController.removeMediaItem(index)
         }
     }
 

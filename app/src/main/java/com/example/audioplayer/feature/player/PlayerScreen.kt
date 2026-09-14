@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,11 +13,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speaker
@@ -27,7 +33,10 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.TextButton
@@ -43,8 +52,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.core.content.ContextCompat
@@ -69,6 +81,7 @@ fun PlayerScreen(
     val devices by deviceViewModel.devices.collectAsStateWithLifecycle()
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showDeviceDialog by remember { mutableStateOf(false) }
+    var showQueue by remember { mutableStateOf(false) }
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -203,11 +216,60 @@ fun PlayerScreen(
                         modifier = Modifier.size(56.dp),
                     )
                 }
+                IconButton(onClick = { showQueue = true }) {
+                    Icon(Icons.Default.QueueMusic, contentDescription = "播放队列")
+                }
                 IconButton(
                     onClick = playbackController::next,
                     enabled = state.hasNext,
                 ) {
                     Icon(Icons.Default.SkipNext, contentDescription = "下一首")
+                }
+            }
+        }
+    }
+
+    if (showQueue) {
+        ModalBottomSheet(onDismissRequest = { showQueue = false }) {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text("正在播放", style = MaterialTheme.typography.titleLarge)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                val threshold = with(LocalDensity.current) { 72.dp.toPx() }
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
+                    itemsIndexed(state.queue, key = { _, item -> item.mediaId }) { index, item ->
+                        var dragOffset by remember(item.mediaId) { mutableFloatStateOf(0f) }
+                        ListItem(
+                            headlineContent = { Text(item.title) },
+                            supportingContent = { Text(item.artist ?: if (item.isCurrent) "正在播放" else "接下来播放") },
+                            trailingContent = {
+                                IconButton(onClick = { playbackController.removeQueueItem(index) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "从队列移除")
+                                }
+                            },
+                            modifier = Modifier
+                                .graphicsLayer { translationY = dragOffset }
+                                .pointerInput(index) {
+                                    detectDragGesturesAfterLongPress(
+                                        onDrag = { change, amount ->
+                                            change.consume()
+                                            dragOffset += amount.y
+                                            when {
+                                                dragOffset > threshold && index < state.queue.lastIndex -> {
+                                                    playbackController.moveQueueItem(index, index + 1)
+                                                    dragOffset = 0f
+                                                }
+                                                dragOffset < -threshold && index > 0 -> {
+                                                    playbackController.moveQueueItem(index, index - 1)
+                                                    dragOffset = 0f
+                                                }
+                                            }
+                                        },
+                                        onDragEnd = { dragOffset = 0f },
+                                        onDragCancel = { dragOffset = 0f },
+                                    )
+                                },
+                        )
+                    }
                 }
             }
         }
