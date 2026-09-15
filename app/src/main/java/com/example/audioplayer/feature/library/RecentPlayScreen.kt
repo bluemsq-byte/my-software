@@ -20,6 +20,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -44,6 +45,7 @@ fun RecentPlayScreen(
             containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text("最近播放") },
                 actions = {
                     if (recent.isNotEmpty()) {

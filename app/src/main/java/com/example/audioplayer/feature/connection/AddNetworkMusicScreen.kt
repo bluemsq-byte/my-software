@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,7 +31,12 @@ fun AddNetworkMusicScreen(
 ) {
     Scaffold(
             containerColor = Color.Transparent,
-        topBar = { TopAppBar(title = { Text("添加网络音乐") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("添加网络音乐") },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+            )
+        },
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),

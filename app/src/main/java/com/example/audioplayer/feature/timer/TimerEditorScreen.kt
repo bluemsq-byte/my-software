@@ -31,6 +31,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -71,6 +72,7 @@ fun TimerEditorScreen(
             containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text(if (state.id == 0L) "新建定时" else "编辑定时") },
                 navigationIcon = {
                     OutlinedButton(onClick = onBack) { Text("返回") }

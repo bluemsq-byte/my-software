@@ -33,6 +33,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,7 +73,12 @@ fun SettingsScreen(
 
     Scaffold(
             containerColor = Color.Transparent,
-        topBar = { TopAppBar(title = { Text("设置") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("设置") },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(

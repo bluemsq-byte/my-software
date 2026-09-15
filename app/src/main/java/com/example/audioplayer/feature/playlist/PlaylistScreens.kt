@@ -36,6 +36,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,7 +76,12 @@ fun PlaylistListScreen(
 
     Scaffold(
             containerColor = Color.Transparent,
-        topBar = { TopAppBar(title = { Text("播放列表") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("播放列表") },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+            )
+        },
         snackbarHost = { SnackbarHost(snackbar) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreateDialog = true }) {
@@ -145,6 +151,7 @@ fun PlaylistDetailScreen(
             containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text(state.name.ifBlank { "播放列表" }) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

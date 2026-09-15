@@ -1,20 +1,31 @@
 # 测试结果
 
-测试日期：2026-09-14
-版本：1.6.0
+测试日期：2026-09-15
+版本：1.6.1
 
 ## 通过项
 
 - Debug 单元测试：25 项通过。
-- Release 单元测试：通过。
+- Release 单元测试：25 项通过。
 - Android 仪器测试：18 项通过。
 - Android 模拟器：Android 15，API 35，x86_64。
 - Android Lint：0 个错误，通过。
 - Debug APK：构建成功。
 - 签名 Release APK：构建成功。
+- Release APK 签名校验：通过，APK Signature Scheme v2。
 - Release APK：模拟器冷启动成功，无崩溃。
 - 手机端主线程网络问题：已修复并加入回归测试。
-- 实际安装版本确认：versionCode 11，versionName 1.6.0。
+- 实际安装版本确认：versionCode 12，versionName 1.6.1。
+
+## v1.6.1 设计草图落地
+
+- 按 `PRODUCT_DESIGN_SPEC.md` 和 `design/sketches.html` 调整 Kotlin + Jetpack Compose 主应用。
+- 保留现有分层、Hilt、Room、Media3 和功能页面架构。
+- 主要页面顶栏改为透明样式，内容与主题渐变背景融合。
+- 迷你播放器改为深色悬浮卡片，统一封面占位、歌曲信息和播放控制。
+- NAS 文件夹增加毛玻璃概览卡片和播放全部入口。
+- 设置页颜色主题改为可视化渐变选择块。
+- Flutter 参考工程仅保留为设计实现参考，不替换主应用架构。
 
 ## v1.6.0 设计规范落地
 

@@ -52,6 +52,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -122,6 +123,7 @@ fun PlayerScreen(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     title = { Text("正在播放") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
