@@ -10,22 +10,10 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -46,8 +34,10 @@ import com.example.audioplayer.feature.playlist.PlaylistListScreen
 import com.example.audioplayer.feature.settings.SettingsScreen
 import com.example.audioplayer.feature.timer.TimerEditorScreen
 import com.example.audioplayer.feature.timer.TimerListScreen
-import com.example.audioplayer.ui.components.GlassBackground
-import com.example.audioplayer.ui.components.MiniPlayer
+import com.example.audioplayer.ui.sketch.SketchBaseScreen
+import com.example.audioplayer.ui.sketch.SketchBottomNavigation
+import com.example.audioplayer.ui.sketch.SketchMiniPlayer
+import com.example.audioplayer.ui.sketch.SketchMiniPlayerUiModel
 
 private const val ROUTE_LIBRARY = "library"
 private const val ROUTE_RECENT = "recent"
@@ -62,78 +52,78 @@ private const val ROUTE_TIMER_EDITOR = "timer_editor"
 private const val ROUTE_BROWSER = "browser"
 private const val ROUTE_SMB_SHARES = "smb_shares"
 
+private val MAIN_BOTTOM_NAV_ROUTES = setOf(
+    ROUTE_LIBRARY,
+    ROUTE_RECENT,
+    ROUTE_TIMERS,
+    ROUTE_PLAYLISTS,
+    ROUTE_SETTINGS,
+    ROUTE_PLAYER,
+    ROUTE_BROWSER,
+)
+
 @Composable
 fun AudioPlayerApp(playbackController: PlaybackController) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route.orEmpty()
-    val currentRouteBase = currentRoute.substringBefore('?')
+    val currentRouteBase = currentRoute.substringBefore('?').substringBefore('/')
     val playbackState by playbackController.state.collectAsStateWithLifecycle()
 
     playbackController.connect()
 
-    GlassBackground {
+    SketchBaseScreen(
+        darkTheme = currentRouteBase == ROUTE_PLAYER,
+        useMaterialTheme = true,
+        forceTheme = true,
+    ) {
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
             bottomBar = {
-            if (currentRoute != ROUTE_PLAYER) {
-                Column {
-                    AnimatedVisibility(
-                        visible = playbackState.currentTrackId != null,
-                        enter = slideInVertically { it },
-                        exit = slideOutVertically { it },
-                    ) {
-                        MiniPlayer(
-                            state = playbackState,
-                            controller = playbackController,
-                            onClick = { navController.navigate(ROUTE_PLAYER) },
-                        )
-                    }
-                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)) {
-                        NavigationBarItem(
-                            selected = currentRouteBase == ROUTE_LIBRARY,
-                            onClick = {
-                                navController.navigate(ROUTE_LIBRARY) {
-                                    popUpTo(ROUTE_LIBRARY) { inclusive = true }
-                                    launchSingleTop = true
+                if (currentRouteBase in MAIN_BOTTOM_NAV_ROUTES) {
+                    Column {
+                        AnimatedVisibility(
+                            visible = playbackState.currentTrackId != null && currentRouteBase != ROUTE_PLAYER,
+                            enter = slideInVertically { it },
+                            exit = slideOutVertically { it },
+                        ) {
+                            SketchMiniPlayer(
+                                state = SketchMiniPlayerUiModel(
+                                    title = playbackState.title,
+                                    artist = playbackState.artist.orEmpty(),
+                                    isPlaying = playbackState.isPlaying,
+                                ),
+                                onPlayPause = playbackController::playPause,
+                                onNext = playbackController::next,
+                                onClick = { navController.navigate(ROUTE_PLAYER) },
+                            )
+                        }
+                        SketchBottomNavigation(
+                            selectedIndex = when (currentRouteBase) {
+                                ROUTE_LIBRARY, ROUTE_BROWSER, ROUTE_PLAYER -> if (currentRouteBase == ROUTE_PLAYER) -1 else 0
+                                ROUTE_RECENT -> 1
+                                ROUTE_PLAYLISTS -> 2
+                                ROUTE_TIMERS -> 3
+                                ROUTE_SETTINGS -> 4
+                                else -> -1
+                            },
+                            onSelected = { index ->
+                                when (index) {
+                                    0 -> navController.navigate(ROUTE_LIBRARY) {
+                                        popUpTo(ROUTE_LIBRARY) { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                    1 -> navController.navigate(ROUTE_RECENT) { launchSingleTop = true }
+                                    2 -> navController.navigate(ROUTE_PLAYLISTS) { launchSingleTop = true }
+                                    3 -> navController.navigate(ROUTE_TIMERS) { launchSingleTop = true }
+                                    4 -> navController.navigate(ROUTE_SETTINGS) { launchSingleTop = true }
                                 }
                             },
-                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                            label = { Text("首页") },
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == ROUTE_RECENT,
-                            onClick = { navController.navigate(ROUTE_RECENT) { launchSingleTop = true } },
-                            icon = { Icon(Icons.Default.History, contentDescription = null) },
-                            label = { Text("最近") },
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == ROUTE_TIMERS,
-                            onClick = { navController.navigate(ROUTE_TIMERS) { launchSingleTop = true } },
-                            icon = { Icon(Icons.Default.Timer, contentDescription = null) },
-                            label = { Text("定时") },
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == ROUTE_PLAYLISTS || currentRoute == "$ROUTE_PLAYLIST_DETAIL/{playlistId}",
-                            onClick = {
-                                navController.navigate(ROUTE_PLAYLISTS) {
-                                    launchSingleTop = true
-                                }
-                            },
-                            icon = { Icon(Icons.Default.QueueMusic, contentDescription = null) },
-                            label = { Text("播放列表") },
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == ROUTE_SETTINGS,
-                            onClick = { navController.navigate(ROUTE_SETTINGS) { launchSingleTop = true } },
-                            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            label = { Text("设置") },
                         )
                     }
                 }
-            }
-        },
-    ) { padding ->
+            },
+        ) { padding ->
         NavHost(
             navController = navController,
             startDestination = ROUTE_LIBRARY,

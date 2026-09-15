@@ -98,4 +98,6 @@ data class SketchNavItemUiModel(
 @Immutable
 data class SketchMenuActionUiModel(
     val label: String,
+    val enabled: Boolean = true,
+    val onClick: () -> Unit = {},
 )

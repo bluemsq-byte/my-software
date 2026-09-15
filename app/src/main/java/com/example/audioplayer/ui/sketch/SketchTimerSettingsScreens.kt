@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -250,6 +251,7 @@ fun SketchTimerCard(
     timer: SketchTimerUiModel,
     onClick: () -> Unit = {},
     onEnabledChange: (Boolean) -> Unit = {},
+    onDelete: () -> Unit = {},
 ) {
     SketchGlassCard(
         modifier = Modifier
@@ -277,6 +279,11 @@ fun SketchTimerCard(
                     uncheckedThumbColor = SketchDesign.colors.muted,
                     uncheckedTrackColor = SketchDesign.colors.glass,
                 ),
+            )
+            SketchIconAction(
+                icon = Icons.Default.Delete,
+                contentDescription = "删除定时",
+                onClick = onDelete,
             )
         }
         Text(

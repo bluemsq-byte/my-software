@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -114,11 +115,11 @@ enum class SketchColorTheme(
     TEAL("青绿", SketchBaseColors.Teal, SketchBaseColors.TealDark),
 }
 
-private val LocalSketchPalette = staticCompositionLocalOf { LightSketchPalette }
+private val LocalSketchPalette = staticCompositionLocalOf<SketchPalette?> { null }
 
 object SketchDesign {
     val colors: SketchPalette
-        @Composable get() = LocalSketchPalette.current
+        @Composable get() = LocalSketchPalette.current ?: LightSketchPalette
 }
 
 /**
@@ -128,14 +129,27 @@ object SketchDesign {
 fun SketchTheme(
     darkTheme: Boolean = false,
     colorTheme: SketchColorTheme = SketchColorTheme.TEAL,
+    useMaterialTheme: Boolean = false,
+    forceTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val base = if (darkTheme) DarkSketchPalette else LightSketchPalette
-    val palette = base.copy(
-        primary = colorTheme.primary,
-        primaryDark = colorTheme.primaryDark,
-        selectedFill = colorTheme.primary.copy(alpha = SketchOpacity.Selected),
-    )
+    val current = LocalSketchPalette.current
+    val palette = if (current != null && !forceTheme) {
+        current
+    } else {
+        val base = if (darkTheme) DarkSketchPalette else LightSketchPalette
+        val primary = if (useMaterialTheme) MaterialTheme.colorScheme.primary else colorTheme.primary
+        val primaryDark = if (useMaterialTheme) {
+            MaterialTheme.colorScheme.secondary
+        } else {
+            colorTheme.primaryDark
+        }
+        base.copy(
+            primary = primary,
+            primaryDark = primaryDark,
+            selectedFill = primary.copy(alpha = SketchOpacity.Selected),
+        )
+    }
     CompositionLocalProvider(LocalSketchPalette provides palette, content = content)
 }
 

@@ -28,6 +28,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -63,10 +64,16 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +81,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -86,9 +95,16 @@ import androidx.compose.ui.unit.dp
 fun SketchBaseScreen(
     darkTheme: Boolean = false,
     colorTheme: SketchColorTheme = SketchColorTheme.TEAL,
+    useMaterialTheme: Boolean = false,
+    forceTheme: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    SketchTheme(darkTheme = darkTheme, colorTheme = colorTheme) {
+    SketchTheme(
+        darkTheme = darkTheme,
+        colorTheme = colorTheme,
+        useMaterialTheme = useMaterialTheme,
+        forceTheme = forceTheme,
+    ) {
         val colors = SketchDesign.colors
         Box(
             modifier = Modifier
@@ -302,6 +318,71 @@ fun SketchSearchField(
     )
 }
 
+/**
+ * 可编辑输入框，承接连接编辑和定时编辑等真实表单。
+ */
+@Composable
+fun SketchEditableField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "",
+    enabled: Boolean = true,
+    password: Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+) {
+    val colors = SketchDesign.colors
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(SketchSpacing.Xs),
+    ) {
+        Text(
+            text = label,
+            color = colors.muted,
+            style = SketchTextStyles.Auxiliary,
+        )
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            enabled = enabled,
+            singleLine = true,
+            textStyle = SketchTextStyles.RowSubtitle.copy(color = colors.ink),
+            cursorBrush = Brush.verticalGradient(listOf(colors.primary, colors.primary)),
+            keyboardOptions = keyboardOptions,
+            visualTransformation = if (password) {
+                PasswordVisualTransformation()
+            } else {
+                VisualTransformation.None
+            },
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = SketchSizes.FieldMinHeight)
+                        .clip(RoundedCornerShape(SketchRadius.Control))
+                        .background(colors.glass)
+                        .border(
+                            BorderStroke(SketchStroke.Border, colors.border),
+                            RoundedCornerShape(SketchRadius.Control),
+                        )
+                        .padding(horizontal = SketchSpacing.Md, vertical = SketchSpacing.Md),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (value.isEmpty() && placeholder.isNotEmpty()) {
+                        Text(
+                            text = placeholder,
+                            color = colors.muted.copy(alpha = SketchOpacity.Muted),
+                            style = SketchTextStyles.RowSubtitle,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
+    }
+}
+
 @Composable
 fun SketchSegmentedTabs(
     titles: List<String>,
@@ -500,10 +581,12 @@ fun SketchFolderRow(
 fun SketchTrackRow(
     track: SketchTrackUiModel,
     onPlay: () -> Unit = {},
-    onMore: () -> Unit = {},
+    onMore: (() -> Unit)? = null,
+    actions: List<SketchMenuActionUiModel> = emptyList(),
     showDuration: Boolean = true,
     showSelection: Boolean = false,
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     SketchRowCard(
         title = track.title,
         subtitle = listOf(track.artist, track.album)
@@ -530,10 +613,25 @@ fun SketchTrackRow(
             if (showSelection) {
                 SketchSelectionBox(selected = track.selected)
             } else {
-                SketchMoreButton(
-                    contentDescription = "更多操作",
-                    onClick = onMore,
-                )
+                Box {
+                    SketchMoreButton(
+                        contentDescription = "更多操作",
+                        onClick = {
+                            if (actions.isEmpty()) {
+                                onMore?.invoke()
+                            } else {
+                                menuExpanded = true
+                            }
+                        },
+                    )
+                    if (actions.isNotEmpty()) {
+                        SketchActionDropdown(
+                            expanded = menuExpanded,
+                            actions = actions,
+                            onDismiss = { menuExpanded = false },
+                        )
+                    }
+                }
             }
         },
         onClick = onPlay,
@@ -545,8 +643,10 @@ fun SketchTrackRow(
 fun SketchConnectionRow(
     connection: SketchConnectionUiModel,
     onClick: () -> Unit = {},
-    onMore: () -> Unit = {},
+    onMore: (() -> Unit)? = null,
+    actions: List<SketchMenuActionUiModel> = emptyList(),
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     SketchRowCard(
         title = connection.name,
         subtitle = "${connection.protocol} · ${connection.status}",
@@ -568,10 +668,25 @@ fun SketchConnectionRow(
                     tint = SketchDesign.colors.primary,
                 )
             } else {
-                SketchMoreButton(
-                    contentDescription = "连接更多操作",
-                    onClick = onMore,
-                )
+                Box {
+                    SketchMoreButton(
+                        contentDescription = "连接更多操作",
+                        onClick = {
+                            if (actions.isEmpty()) {
+                                onMore?.invoke()
+                            } else {
+                                menuExpanded = true
+                            }
+                        },
+                    )
+                    if (actions.isNotEmpty()) {
+                        SketchActionDropdown(
+                            expanded = menuExpanded,
+                            actions = actions,
+                            onDismiss = { menuExpanded = false },
+                        )
+                    }
+                }
             }
         },
         onClick = onClick,
@@ -582,7 +697,9 @@ fun SketchConnectionRow(
 fun SketchPlaylistRow(
     playlist: SketchPlaylistUiModel,
     onClick: () -> Unit = {},
+    actions: List<SketchMenuActionUiModel> = emptyList(),
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     SketchRowCard(
         title = playlist.name,
         subtitle = "${playlist.songCount} 首歌曲 · ${playlist.source}",
@@ -593,11 +710,25 @@ fun SketchPlaylistRow(
             )
         },
         trailing = {
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "打开播放列表",
-                tint = SketchDesign.colors.muted,
-            )
+            if (actions.isEmpty()) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "打开播放列表",
+                    tint = SketchDesign.colors.muted,
+                )
+            } else {
+                Box {
+                    SketchMoreButton(
+                        contentDescription = "播放列表更多操作",
+                        onClick = { menuExpanded = true },
+                    )
+                    SketchActionDropdown(
+                        expanded = menuExpanded,
+                        actions = actions,
+                        onDismiss = { menuExpanded = false },
+                    )
+                }
+            }
         },
         onClick = onClick,
     )
@@ -863,6 +994,7 @@ fun SketchMiniPlayer(
     state: SketchMiniPlayerUiModel,
     onPlayPause: () -> Unit = {},
     onNext: () -> Unit = {},
+    onClick: () -> Unit = {},
 ) {
     val colors = SketchDesign.colors
     Row(
@@ -870,6 +1002,7 @@ fun SketchMiniPlayer(
             .fillMaxWidth()
             .height(SketchSizes.MiniPlayer)
             .background(colors.miniPlayer)
+            .clickable(onClick = onClick)
             .padding(horizontal = SketchSpacing.Md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(SketchSpacing.Md),
@@ -1101,8 +1234,10 @@ fun SketchQueueRow(
     track: SketchTrackUiModel,
     active: Boolean = false,
     onClick: () -> Unit = {},
-    onMore: () -> Unit = {},
+    onMore: (() -> Unit)? = null,
+    actions: List<SketchMenuActionUiModel> = emptyList(),
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
     val colors = SketchDesign.colors
     SketchGlassCard(
         modifier = Modifier
@@ -1147,9 +1282,57 @@ fun SketchQueueRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            SketchMoreButton(
-                contentDescription = "队列更多操作",
-                onClick = onMore,
+            Box {
+                SketchMoreButton(
+                    contentDescription = "队列更多操作",
+                    onClick = {
+                        if (actions.isEmpty()) {
+                            onMore?.invoke()
+                        } else {
+                            menuExpanded = true
+                        }
+                    },
+                )
+                if (actions.isNotEmpty()) {
+                    SketchActionDropdown(
+                        expanded = menuExpanded,
+                        actions = actions,
+                        onDismiss = { menuExpanded = false },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SketchActionDropdown(
+    expanded: Boolean,
+    actions: List<SketchMenuActionUiModel>,
+    onDismiss: () -> Unit,
+) {
+    val colors = SketchDesign.colors
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = Modifier
+            .clip(RoundedCornerShape(SketchRadius.Card))
+            .background(colors.glassStrong),
+    ) {
+        actions.forEach { action ->
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = action.label,
+                        color = if (action.enabled) colors.ink else colors.muted,
+                        style = SketchTextStyles.RowSubtitle,
+                    )
+                },
+                enabled = action.enabled,
+                onClick = {
+                    onDismiss()
+                    action.onClick()
+                },
             )
         }
     }

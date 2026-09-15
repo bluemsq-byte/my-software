@@ -2,39 +2,41 @@ package com.example.audioplayer.feature.connection
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.model.ConnectionProtocol
+import com.example.audioplayer.ui.sketch.SketchBaseScreen
+import com.example.audioplayer.ui.sketch.SketchEditableField
+import com.example.audioplayer.ui.sketch.SketchGlassCard
+import com.example.audioplayer.ui.sketch.SketchIconAction
+import com.example.audioplayer.ui.sketch.SketchPrimaryButton
+import com.example.audioplayer.ui.sketch.SketchSecondaryButton
+import com.example.audioplayer.ui.sketch.SketchSegmentedTabs
+import com.example.audioplayer.ui.sketch.SketchSpacing
+import com.example.audioplayer.ui.sketch.SketchSwitchRow
+import com.example.audioplayer.ui.sketch.SketchTopBar
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 添加/编辑网络连接。表单结构和原 ViewModel 状态一一对应。
+ */
 @Composable
 fun ConnectionEditorScreen(
     onSaved: () -> Unit,
@@ -53,111 +55,111 @@ fun ConnectionEditorScreen(
         if (state.saved) onSaved()
     }
 
-    Scaffold(
+    SketchBaseScreen {
+        Scaffold(
             containerColor = Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                title = { Text(if (state.id.isBlank()) "添加 NAS" else "编辑 NAS") },
-                navigationIcon = {
-                    OutlinedButton(onClick = onBack) { Text("返回") }
-                },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                FilterChip(
-                    selected = state.protocol == ConnectionProtocol.SMB,
-                    onClick = { viewModel.updateProtocol(ConnectionProtocol.SMB) },
-                    label = { Text("SMB") },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                SketchTopBar(
+                    title = if (state.id.isBlank()) "添加 NAS" else "编辑 NAS",
+                    onBack = onBack,
+                    actions = {
+                        SketchIconAction(
+                            icon = Icons.Default.Check,
+                            contentDescription = "保存连接",
+                            onClick = viewModel::save,
+                        )
+                    },
                 )
-                FilterChip(
-                    selected = state.protocol == ConnectionProtocol.WEBDAV,
-                    onClick = { viewModel.updateProtocol(ConnectionProtocol.WEBDAV) },
-                    label = { Text("WebDAV") },
-                )
-            }
-
-            OutlinedTextField(
-                value = state.name,
-                onValueChange = viewModel::updateName,
-                label = { Text("连接名称") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = state.host,
-                onValueChange = viewModel::updateHost,
-                label = { Text("服务器地址或 IP") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = state.port,
-                onValueChange = viewModel::updatePort,
-                label = { Text("端口") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = state.username,
-                onValueChange = viewModel::updateUsername,
-                label = { Text("用户名") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = state.password,
-                onValueChange = viewModel::updatePassword,
-                label = { Text("密码") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            if (state.protocol == ConnectionProtocol.SMB) {
-                state.selectedShare?.let { share ->
-                    Text("已选择共享文件夹：$share")
-                }
-                OutlinedTextField(
-                    value = state.domain,
-                    onValueChange = viewModel::updateDomain,
-                    label = { Text("域（可选）") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                OutlinedTextField(
-                    value = state.basePath,
-                    onValueChange = viewModel::updateBasePath,
-                    label = { Text("WebDAV 路径") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Switch(checked = state.useHttps, onCheckedChange = viewModel::updateUseHttps)
-                    Spacer(Modifier.padding(4.dp))
-                    Text("使用 HTTPS")
-                }
-            }
-
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
-                    onClick = viewModel::testConnection,
-                    enabled = !state.isTesting && !state.isSaving,
-                    modifier = Modifier.weight(1f),
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(SketchSpacing.Page),
+                    verticalArrangement = Arrangement.spacedBy(SketchSpacing.Md),
                 ) {
-                    Text(if (state.isTesting) "测试中…" else "测试连接")
-                }
-                Button(
-                    onClick = viewModel::save,
-                    enabled = !state.isSaving && !state.isTesting,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (state.isSaving) "保存中…" else "保存")
+                    SketchSegmentedTabs(
+                        titles = listOf("SMB", "WebDAV"),
+                        selectedIndex = if (state.protocol == ConnectionProtocol.SMB) 0 else 1,
+                        onSelected = { index ->
+                            viewModel.updateProtocol(
+                                if (index == 0) ConnectionProtocol.SMB else ConnectionProtocol.WEBDAV,
+                            )
+                        },
+                    )
+                    SketchEditableField(
+                        label = "连接名称",
+                        value = state.name,
+                        onValueChange = viewModel::updateName,
+                    )
+                    SketchEditableField(
+                        label = "服务器地址或 IP",
+                        value = state.host,
+                        onValueChange = viewModel::updateHost,
+                    )
+                    SketchEditableField(
+                        label = "端口",
+                        value = state.port,
+                        onValueChange = viewModel::updatePort,
+                    )
+                    SketchEditableField(
+                        label = "用户名",
+                        value = state.username,
+                        onValueChange = viewModel::updateUsername,
+                    )
+                    SketchEditableField(
+                        label = "密码",
+                        value = state.password,
+                        onValueChange = viewModel::updatePassword,
+                        password = true,
+                    )
+                    if (state.protocol == ConnectionProtocol.SMB) {
+                        state.selectedShare?.let { share ->
+                            SketchGlassCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(SketchSpacing.Md),
+                            ) {
+                                androidx.compose.material3.Text("已选择共享文件夹：$share")
+                            }
+                        }
+                        SketchEditableField(
+                            label = "域（可选）",
+                            value = state.domain,
+                            onValueChange = viewModel::updateDomain,
+                        )
+                    } else {
+                        SketchEditableField(
+                            label = "WebDAV 路径",
+                            value = state.basePath,
+                            onValueChange = viewModel::updateBasePath,
+                        )
+                        SketchSwitchRow(
+                            title = "使用 HTTPS",
+                            subtitle = "仅连接证书有效的 WebDAV 服务",
+                            checked = state.useHttps,
+                            onCheckedChange = viewModel::updateUseHttps,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(SketchSpacing.Md),
+                    ) {
+                        SketchSecondaryButton(
+                            label = if (state.isTesting) "测试中…" else "测试连接",
+                            onClick = viewModel::testConnection,
+                            modifier = Modifier.weight(1f),
+                        )
+                        SketchPrimaryButton(
+                            label = if (state.isSaving) "保存中…" else "保存",
+                            onClick = viewModel::save,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }

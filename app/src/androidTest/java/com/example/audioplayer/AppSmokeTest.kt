@@ -17,7 +17,7 @@ class AppSmokeTest {
 
     @Test
     fun appStartsAndBottomNavigationOpensCoreScreens() {
-        composeRule.onNodeWithText("音乐库").assertIsDisplayed()
+        composeRule.onNodeWithText("音乐").assertIsDisplayed()
 
         composeRule.onNodeWithText("定时").performClick()
         composeRule.onNodeWithText("定时任务").assertIsDisplayed()

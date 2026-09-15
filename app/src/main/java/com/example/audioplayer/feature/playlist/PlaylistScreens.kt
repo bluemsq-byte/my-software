@@ -2,8 +2,11 @@ package com.example.audioplayer.feature.playlist
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,49 +15,42 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.audioplayer.ui.components.GlassCard
-import com.example.audioplayer.ui.components.GlassTrackRow
-import com.example.audioplayer.ui.components.TrackMenuAction
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.model.AudioTrack
+import com.example.audioplayer.ui.sketch.SketchBaseScreen
+import com.example.audioplayer.ui.sketch.SketchEmptyState
+import com.example.audioplayer.ui.sketch.SketchIconAction
+import com.example.audioplayer.ui.sketch.SketchMenuActionUiModel
+import com.example.audioplayer.ui.sketch.SketchPill
+import com.example.audioplayer.ui.sketch.SketchPlaylistRow
+import com.example.audioplayer.ui.sketch.SketchPlaylistUiModel
+import com.example.audioplayer.ui.sketch.SketchSpacing
+import com.example.audioplayer.ui.sketch.SketchToolbar
+import com.example.audioplayer.ui.sketch.SketchTopBar
+import com.example.audioplayer.ui.sketch.SketchTrackRow
+import com.example.audioplayer.ui.sketch.SketchTrackUiModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 播放列表列表页。
+ */
 @Composable
 fun PlaylistListScreen(
     onCreate: () -> Unit,
@@ -75,37 +71,57 @@ fun PlaylistListScreen(
     }
 
     Scaffold(
-            containerColor = Color.Transparent,
-        topBar = {
-            TopAppBar(
-                title = { Text("播放列表") },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
-        },
+        containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "新建播放列表")
-            }
-        },
     ) { padding ->
-        if (playlists.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text("还没有播放列表")
-                Button(onClick = { showCreateDialog = true }) { Text("新建播放列表") }
-            }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                items(playlists, key = { it.id }) { playlist ->
-                    ListItem(
-                        headlineContent = { Text(playlist.name) },
-                        supportingContent = { Text("${playlist.itemCount} 首歌曲") },
-                        modifier = Modifier.clickable { onOpen(playlist.id) },
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            SketchTopBar(
+                title = "播放列表",
+                actions = {
+                    SketchIconAction(
+                        icon = Icons.Default.Add,
+                        contentDescription = "新建播放列表",
+                        onClick = { showCreateDialog = true },
                     )
+                },
+            )
+            if (playlists.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SketchEmptyState(
+                        title = "还没有播放列表",
+                        description = "可以混合本地与 NAS 音乐。",
+                        actionLabel = "新建播放列表",
+                        onAction = { showCreateDialog = true },
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = SketchSpacing.Sm),
+                ) {
+                    items(playlists, key = { it.id }) { playlist ->
+                        SketchPlaylistRow(
+                            playlist = SketchPlaylistUiModel(
+                                id = playlist.id.toString(),
+                                name = playlist.name,
+                                songCount = playlist.itemCount,
+                                source = "本地与 NAS",
+                            ),
+                            onClick = { onOpen(playlist.id) },
+                            actions = listOf(
+                                SketchMenuActionUiModel("删除播放列表") {
+                                    viewModel.delete(playlist.id)
+                                },
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -123,12 +139,14 @@ fun PlaylistListScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.create(name)
-                    name = ""
-                    showCreateDialog = false
-                    onCreate()
-                }) { Text("创建") }
+                Button(
+                    onClick = {
+                        viewModel.create(name)
+                        name = ""
+                        showCreateDialog = false
+                        onCreate()
+                    },
+                ) { Text("创建") }
             },
             dismissButton = {
                 Button(onClick = { showCreateDialog = false }) { Text("取消") }
@@ -137,7 +155,9 @@ fun PlaylistListScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 播放列表详情和多选播放。
+ */
 @Composable
 fun PlaylistDetailScreen(
     onBack: () -> Unit,
@@ -147,123 +167,107 @@ fun PlaylistDetailScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var selectedTracks by remember { mutableStateOf(setOf<AudioTrack>()) }
 
-    Scaffold(
-            containerColor = Color.Transparent,
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-                title = { Text(state.name.ifBlank { "播放列表" }) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = {
-                            if (state.selectionMode) viewModel.exitSelectionMode() else viewModel.enterSelectionMode()
-                        },
-                    ) {
-                        Text(if (state.selectionMode) "取消选择" else "选择")
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (state.selectionMode) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedButton(onClick = viewModel::selectAll, modifier = Modifier.weight(1f)) {
-                        Text("全选")
-                    }
-                    Button(
-                        onClick = viewModel::playSelected,
-                        enabled = state.selectedItemIds.isNotEmpty(),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("播放所选（${state.selectedItemIds.size}）")
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+    SketchBaseScreen {
+        Scaffold(containerColor = Color.Transparent) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
             ) {
-                Button(
-                    onClick = { viewModel.playAll() },
-                    enabled = state.items.isNotEmpty(),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null)
-                    Text("播放全部")
-                }
-                Button(
-                    onClick = viewModel::openAddLocalDialog,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("添加本地")
-                }
-                Button(
-                    onClick = onAddNetworkSongs,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("添加网络")
-                }
-            }
-
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-                    if (state.selectionMode) {
-                        GlassCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .clickable { viewModel.toggleSelection(item.id) },
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                            ) {
-                                Checkbox(
-                                    checked = item.id in state.selectedItemIds,
-                                    onCheckedChange = { viewModel.toggleSelection(item.id) },
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(item.artist ?: item.sourceType.name.lowercase())
+                SketchTopBar(
+                    title = state.name.ifBlank { "播放列表" },
+                    onBack = onBack,
+                    actions = {
+                        SketchPill(
+                            label = if (state.selectionMode) "取消" else "选择",
+                            selected = state.selectionMode,
+                            onClick = {
+                                if (state.selectionMode) {
+                                    viewModel.exitSelectionMode()
+                                } else {
+                                    viewModel.enterSelectionMode()
                                 }
-                            }
-                        }
-                    } else {
-                        GlassTrackRow(
-                            title = item.title,
-                            subtitle = item.artist ?: item.sourceType.name.lowercase(),
-                            leadingIcon = Icons.Default.MusicNote,
+                            },
+                        )
+                    },
+                )
+                SketchToolbar {
+                    SketchPill(
+                        label = "播放全部",
+                        selected = true,
+                        onClick = { viewModel.playAll() },
+                    )
+                    SketchPill(
+                        label = "添加本地",
+                        onClick = viewModel::openAddLocalDialog,
+                    )
+                    SketchPill(
+                        label = "添加网络",
+                        onClick = onAddNetworkSongs,
+                    )
+                }
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = SketchSpacing.Sm),
+                ) {
+                    itemsIndexed(
+                        state.items,
+                        key = { _, item -> item.id },
+                    ) { index, item ->
+                        SketchTrackRow(
+                            track = SketchTrackUiModel(
+                                id = item.id.toString(),
+                                title = item.title,
+                                artist = item.artist ?: item.sourceType.name.lowercase(),
+                                album = item.sourceType.name,
+                                duration = "",
+                                selected = item.id in state.selectedItemIds,
+                            ),
+                            onPlay = {
+                                if (state.selectionMode) {
+                                    viewModel.toggleSelection(item.id)
+                                } else {
+                                    viewModel.playAt(index)
+                                }
+                            },
+                            showDuration = false,
+                            showSelection = state.selectionMode,
                             actions = listOf(
-                                TrackMenuAction("立即播放", Icons.Default.PlayArrow) {
+                                SketchMenuActionUiModel("立即播放") {
                                     viewModel.playAt(index)
                                 },
-                                TrackMenuAction("下一首播放", Icons.Default.PlayArrow) {
+                                SketchMenuActionUiModel("下一首播放") {
                                     viewModel.playNext(item)
                                 },
-                                TrackMenuAction("加入播放队列", Icons.Default.QueueMusic) {
+                                SketchMenuActionUiModel("加入播放队列") {
                                     viewModel.addToQueue(item)
                                 },
-                                TrackMenuAction("上移", Icons.Default.KeyboardArrowUp) {
+                                SketchMenuActionUiModel("上移") {
                                     viewModel.move(item.id, -1)
                                 },
-                                TrackMenuAction("下移", Icons.Default.KeyboardArrowDown) {
+                                SketchMenuActionUiModel("下移") {
                                     viewModel.move(item.id, 1)
                                 },
-                                TrackMenuAction("从列表移除", Icons.Default.Delete) {
+                                SketchMenuActionUiModel("从列表移除") {
                                     viewModel.remove(item.id)
                                 },
                             ),
-                            onClick = { viewModel.playAt(index) },
+                        )
+                    }
+                }
+                if (state.selectionMode) {
+                    SketchToolbar {
+                        SketchPill(
+                            label = "全选",
+                            onClick = viewModel::selectAll,
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        SketchPill(
+                            label = "播放所选（${state.selectedItemIds.size}）",
+                            selected = state.selectedItemIds.isNotEmpty(),
+                            onClick = viewModel::playSelected,
                         )
                     }
                 }
@@ -279,14 +283,16 @@ fun PlaylistDetailScreen(
                 LazyColumn {
                     items(state.localTracks, key = { it.id }) { track ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().clickable {
-                                selectedTracks = if (track in selectedTracks) {
-                                    selectedTracks - track
-                                } else {
-                                    selectedTracks + track
-                                }
-                            },
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedTracks = if (track in selectedTracks) {
+                                        selectedTracks - track
+                                    } else {
+                                        selectedTracks + track
+                                    }
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(
                                 checked = track in selectedTracks,
@@ -304,10 +310,12 @@ fun PlaylistDetailScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.addLocalTracks(selectedTracks.toList())
-                    selectedTracks = emptySet()
-                }) { Text("添加") }
+                Button(
+                    onClick = {
+                        viewModel.addLocalTracks(selectedTracks.toList())
+                        selectedTracks = emptySet()
+                    },
+                ) { Text("添加") }
             },
             dismissButton = {
                 Button(onClick = { viewModel.closeAddLocalDialog() }) { Text("取消") }

@@ -1,4 +1,4 @@
-# 音频播放器 v1.6.1
+# 音频播放器 v1.7.0
 
 安卓本地与群晖 NAS 音频播放器。首页提供本地音乐库、网络音乐、最近播放和播放列表入口。
 
@@ -30,11 +30,13 @@
 - 设置页使用主题色块选择六种颜色主题。
 - 按产品设计规范和 `design/sketches.html` 全量草图重做核心页面视觉。
 - 主要页面使用透明顶栏、悬浮迷你播放器和统一的卡片层级。
+- 16 页 Compose 草图代码已接入真实首页、网络、NAS、播放、列表、定时和设置页面。
+- 底部导航、主题色、迷你播放器和播放页已使用设计令牌动态联动。
 
 ## 安装包
 
-- Release APK：`dist/audio-player-v1.6.1.apk`
-- Debug APK：`dist/audio-player-v1.6.1-debug.apk`
+- Release APK：`dist/audio-player-v1.7.0.apk`
+- Debug APK：`dist/audio-player-v1.7.0-debug.apk`
 - SHA-256：`dist/SHA256SUMS.txt`
 
 Release APK 已使用本项目的本地发布密钥签名。密钥位于 `.secrets/audio-player-release.jks`，签名配置位于

@@ -1,43 +1,34 @@
 package com.example.audioplayer.feature.timer
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.audioplayer.ui.components.GlassCard
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.model.TimerAction
 import com.example.audioplayer.core.model.TimerTask
+import com.example.audioplayer.ui.sketch.SketchEmptyState
+import com.example.audioplayer.ui.sketch.SketchIconAction
+import com.example.audioplayer.ui.sketch.SketchSpacing
+import com.example.audioplayer.ui.sketch.SketchTimerCard
+import com.example.audioplayer.ui.sketch.SketchTimerUiModel
+import com.example.audioplayer.ui.sketch.SketchTopBar
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * 定时任务列表页。
+ */
 @Composable
 fun TimerListScreen(
     onAddTimer: () -> Unit,
@@ -47,83 +38,63 @@ fun TimerListScreen(
     val timers by viewModel.timers.collectAsStateWithLifecycle()
 
     Scaffold(
-            containerColor = Color.Transparent,
-        topBar = {
-            TopAppBar(
-                title = { Text("定时任务") },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAddTimer) {
-                Icon(Icons.Default.Add, contentDescription = "添加定时")
-            }
-        },
+        containerColor = Color.Transparent,
     ) { padding ->
-        if (timers.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text("还没有定时任务")
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = onAddTimer) { Text("新建定时") }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(timers, key = { it.id }) { task ->
-                    GlassCard(
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(task.name, style = MaterialTheme.typography.titleMedium)
-                                    Text(
-                                        "%02d:%02d · %s".format(
-                                            task.hour,
-                                            task.minute,
-                                            if (task.action == TimerAction.START) "开始播放" else "停止播放",
-                                        ),
-                                    )
-                                    Text(
-                                        repeatSummary(task),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    if (task.action == TimerAction.START) {
-                                        Text(
-                                            "${task.sourceType?.name.orEmpty()} · ${task.sourcePath.orEmpty()}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                        )
-                                    }
-                                }
-                                Switch(
-                                    checked = task.enabled,
-                                    onCheckedChange = { viewModel.toggle(task, it) },
-                                )
-                                IconButton(onClick = { viewModel.delete(task) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "删除")
-                                }
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            Button(
-                                onClick = { onEditTimer(task) },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text("编辑")
-                            }
-                        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            SketchTopBar(
+                title = "定时任务",
+                actions = {
+                    SketchIconAction(
+                        icon = Icons.Default.Add,
+                        contentDescription = "添加定时",
+                        onClick = onAddTimer,
+                    )
+                },
+            )
+            if (timers.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SketchEmptyState(
+                        title = "还没有定时任务",
+                        description = "可以设置定时开始播放或停止播放。",
+                        actionLabel = "新建定时",
+                        onAction = onAddTimer,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = SketchSpacing.Sm),
+                ) {
+                    items(timers, key = { it.id }) { task ->
+                        SketchTimerCard(
+                            timer = SketchTimerUiModel(
+                                id = task.id.toString(),
+                                name = task.name,
+                                time = "%02d:%02d".format(task.hour, task.minute),
+                                action = if (task.action == TimerAction.START) {
+                                    com.example.audioplayer.ui.sketch.SketchTimerAction.START
+                                } else {
+                                    com.example.audioplayer.ui.sketch.SketchTimerAction.STOP
+                                },
+                                repeatText = repeatSummary(task),
+                                sourceText = if (task.action == TimerAction.START) {
+                                    "${task.sourceType?.name.orEmpty()} · ${task.sourcePath.orEmpty()}"
+                                } else {
+                                    "当前播放队列"
+                                },
+                                enabled = task.enabled,
+                            ),
+                            onClick = { onEditTimer(task) },
+                            onEnabledChange = { viewModel.toggle(task, it) },
+                            onDelete = { viewModel.delete(task) },
+                        )
                     }
                 }
             }
