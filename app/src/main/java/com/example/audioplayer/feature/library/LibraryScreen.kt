@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -50,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.example.audioplayer.ui.components.GlassCard
+import com.example.audioplayer.ui.components.GlassTrackRow
+import com.example.audioplayer.ui.components.TrackMenuAction
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -140,6 +144,8 @@ fun LibraryScreen(
                     onRefresh = { viewModel.loadLocal(force = true) },
                     onSearch = viewModel::updateLocalSearchQuery,
                     onPlay = viewModel::play,
+                    onPlayNext = viewModel::playNext,
+                    onAddToQueue = viewModel::addToQueue,
                 )
             } else {
                 NetworkMusicContent(
@@ -164,6 +170,8 @@ private fun LocalMusicContent(
     onRefresh: () -> Unit,
     onSearch: (String) -> Unit,
     onPlay: (List<AudioTrack>, Int) -> Unit,
+    onPlayNext: (AudioTrack) -> Unit,
+    onAddToQueue: (AudioTrack) -> Unit,
 ) {
     when {
         !hasPermission -> {
@@ -278,6 +286,9 @@ private fun LocalMusicContent(
                             onClick = {
                                 onPlay(state.visibleTracks, state.visibleTracks.indexOf(track))
                             },
+                            onPlayNow = { onPlay(listOf(track), 0) },
+                            onPlayNext = { onPlayNext(track) },
+                            onAddToQueue = { onAddToQueue(track) },
                         )
                     }
                 }
@@ -359,22 +370,20 @@ private fun NetworkMusicContent(
 private fun AudioTrackRow(
     track: AudioTrack,
     onClick: () -> Unit,
+    onPlayNow: () -> Unit,
+    onPlayNext: () -> Unit,
+    onAddToQueue: () -> Unit,
 ) {
-    GlassCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-    ) {
-        ListItem(
-            headlineContent = {
-                Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            },
-            supportingContent = {
-                Text(track.artist ?: "未知歌手", maxLines = 1, overflow = TextOverflow.Ellipsis)
-            },
-            leadingContent = { Icon(Icons.Default.MusicNote, contentDescription = null) },
-            trailingContent = { Text(formatDuration(track.durationMillis)) },
-            modifier = Modifier.clickable(onClick = onClick),
-        )
-    }
+    GlassTrackRow(
+        title = track.title,
+        subtitle = track.artist ?: "未知歌手",
+        leadingIcon = Icons.Default.MusicNote,
+        trailingText = formatDuration(track.durationMillis),
+        actions = listOf(
+            TrackMenuAction("立即播放", Icons.Default.PlayArrow, onClick = onPlayNow),
+            TrackMenuAction("下一首播放", Icons.Default.PlayArrow, onClick = onPlayNext),
+            TrackMenuAction("加入播放队列", Icons.Default.QueueMusic, onClick = onAddToQueue),
+        ),
+        onClick = onClick,
+    )
 }

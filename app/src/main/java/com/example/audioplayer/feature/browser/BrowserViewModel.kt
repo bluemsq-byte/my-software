@@ -100,4 +100,22 @@ class BrowserViewModel @Inject constructor(
             if (index >= 0) playbackController.play(queue, index)
         }
     }
+
+    fun playNext(entry: RemoteEntry) {
+        viewModelScope.launch {
+            val state = _state.value
+            remoteFileRepository.buildQueue(connectionId, state.path, state.entries)
+                .firstOrNull { it.remotePath == entry.path }
+                ?.let(playbackController::playNext)
+        }
+    }
+
+    fun addToQueue(entry: RemoteEntry) {
+        viewModelScope.launch {
+            val state = _state.value
+            remoteFileRepository.buildQueue(connectionId, state.path, state.entries)
+                .firstOrNull { it.remotePath == entry.path }
+                ?.let(playbackController::addToQueue)
+        }
+    }
 }

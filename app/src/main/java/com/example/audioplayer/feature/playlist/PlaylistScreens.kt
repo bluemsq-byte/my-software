@@ -16,7 +16,9 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -42,6 +44,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.audioplayer.ui.components.GlassCard
+import com.example.audioplayer.ui.components.GlassTrackRow
+import com.example.audioplayer.ui.components.TrackMenuAction
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -206,38 +210,54 @@ fun PlaylistDetailScreen(
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 itemsIndexed(state.items, key = { _, item -> item.id }) { index, item ->
-                    GlassCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp)
-                            .clickable {
-                                if (state.selectionMode) viewModel.toggleSelection(item.id) else viewModel.playAt(index)
-                            },
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    if (state.selectionMode) {
+                        GlassCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .clickable { viewModel.toggleSelection(item.id) },
                         ) {
-                            if (state.selectionMode) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            ) {
                                 Checkbox(
                                     checked = item.id in state.selectedItemIds,
                                     onCheckedChange = { viewModel.toggleSelection(item.id) },
                                 )
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(item.artist ?: item.sourceType.name.lowercase())
-                            }
-                            IconButton(onClick = { viewModel.move(item.id, -1) }) {
-                                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "上移")
-                            }
-                            IconButton(onClick = { viewModel.move(item.id, 1) }) {
-                                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "下移")
-                            }
-                            IconButton(onClick = { viewModel.remove(item.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "移除")
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(item.artist ?: item.sourceType.name.lowercase())
+                                }
                             }
                         }
+                    } else {
+                        GlassTrackRow(
+                            title = item.title,
+                            subtitle = item.artist ?: item.sourceType.name.lowercase(),
+                            leadingIcon = Icons.Default.MusicNote,
+                            actions = listOf(
+                                TrackMenuAction("立即播放", Icons.Default.PlayArrow) {
+                                    viewModel.playAt(index)
+                                },
+                                TrackMenuAction("下一首播放", Icons.Default.PlayArrow) {
+                                    viewModel.playNext(item)
+                                },
+                                TrackMenuAction("加入播放队列", Icons.Default.QueueMusic) {
+                                    viewModel.addToQueue(item)
+                                },
+                                TrackMenuAction("上移", Icons.Default.KeyboardArrowUp) {
+                                    viewModel.move(item.id, -1)
+                                },
+                                TrackMenuAction("下移", Icons.Default.KeyboardArrowDown) {
+                                    viewModel.move(item.id, 1)
+                                },
+                                TrackMenuAction("从列表移除", Icons.Default.Delete) {
+                                    viewModel.remove(item.id)
+                                },
+                            ),
+                            onClick = { viewModel.playAt(index) },
+                        )
                     }
                 }
             }

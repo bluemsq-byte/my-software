@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +42,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.network.RemoteEntry
 import com.example.audioplayer.core.network.RemotePath
 import com.example.audioplayer.ui.components.GlassCard
+import com.example.audioplayer.ui.components.GlassTrackRow
+import com.example.audioplayer.ui.components.TrackMenuAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -153,6 +157,9 @@ fun BrowserScreen(
                                 onAddToPlaylist = if (entry.isDirectory) null else {
                                     { pendingPlaylistEntry = entry }
                                 },
+                                onPlayNow = { viewModel.play(entry); onOpenPlayer() },
+                                onPlayNext = { viewModel.playNext(entry) },
+                                onAddToQueue = { viewModel.addToQueue(entry) },
                             )
                         }
                     }
@@ -195,7 +202,25 @@ private fun EntryRow(
     entry: RemoteEntry,
     onClick: () -> Unit,
     onAddToPlaylist: (() -> Unit)?,
+    onPlayNow: () -> Unit,
+    onPlayNext: () -> Unit,
+    onAddToQueue: () -> Unit,
 ) {
+    if (!entry.isDirectory) {
+        GlassTrackRow(
+            title = entry.name,
+            subtitle = "网络音乐",
+            leadingIcon = Icons.Default.AudioFile,
+            actions = listOf(
+                TrackMenuAction("立即播放", Icons.Default.PlayArrow, onClick = onPlayNow),
+                TrackMenuAction("下一首播放", Icons.Default.PlayArrow, onClick = onPlayNext),
+                TrackMenuAction("加入播放队列", Icons.Default.QueueMusic, onClick = onAddToQueue),
+                TrackMenuAction("加入播放列表", onClick = onAddToPlaylist ?: {}),
+            ),
+            onClick = onClick,
+        )
+        return
+    }
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()

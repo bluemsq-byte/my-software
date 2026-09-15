@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,7 +28,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.audioplayer.core.model.toAudioTrack
 import com.example.audioplayer.ui.components.GlassCard
+import com.example.audioplayer.ui.components.GlassTrackRow
+import com.example.audioplayer.ui.components.TrackMenuAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,18 +66,23 @@ fun RecentPlayScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(recent, key = { it.mediaId }) { item ->
-                    GlassCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                    ) {
-                        ListItem(
-                            headlineContent = { Text(item.title) },
-                            supportingContent = { Text(item.artist ?: "未知歌手") },
-                            leadingContent = { Icon(Icons.Default.MusicNote, contentDescription = null) },
-                            modifier = Modifier.clickable { viewModel.playRecent(item) },
-                        )
-                    }
+                    GlassTrackRow(
+                        title = item.title,
+                        subtitle = item.artist ?: "未知歌手",
+                        leadingIcon = Icons.Default.MusicNote,
+                        actions = listOf(
+                            TrackMenuAction("立即播放", Icons.Default.PlayArrow) {
+                                viewModel.playRecent(item)
+                            },
+                            TrackMenuAction("下一首播放", Icons.Default.PlayArrow) {
+                                viewModel.playNext(item.toAudioTrack())
+                            },
+                            TrackMenuAction("加入播放队列", Icons.Default.QueueMusic) {
+                                viewModel.addToQueue(item.toAudioTrack())
+                            },
+                        ),
+                        onClick = { viewModel.playRecent(item) },
+                    )
                 }
             }
         }

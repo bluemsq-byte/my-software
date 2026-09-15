@@ -92,6 +92,18 @@ class LibraryViewModel @Inject constructor(
         playbackController.play(tracks, startIndex)
     }
 
+    fun playTrack(track: AudioTrack) {
+        playbackController.play(listOf(track), 0)
+    }
+
+    fun playNext(track: AudioTrack) {
+        playbackController.playNext(track)
+    }
+
+    fun addToQueue(track: AudioTrack) {
+        playbackController.addToQueue(track)
+    }
+
     fun testConnection(connection: ConnectionEntity) {
         viewModelScope.launch {
             _testingConnectionId.value = connection.id

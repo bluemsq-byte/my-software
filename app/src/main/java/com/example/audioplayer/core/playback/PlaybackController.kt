@@ -104,6 +104,20 @@ class PlaybackController @Inject constructor(
         controller?.let { if (it.isPlaying) it.pause() else it.play() }
     }
 
+    fun playNext(track: AudioTrack) {
+        val mediaController = controller ?: return
+        tracksById = tracksById + (track.id to track)
+        val insertIndex = (mediaController.currentMediaItemIndex + 1)
+            .coerceIn(0, mediaController.mediaItemCount)
+        mediaController.addMediaItem(insertIndex, MediaItemFactory.create(track))
+    }
+
+    fun addToQueue(track: AudioTrack) {
+        val mediaController = controller ?: return
+        tracksById = tracksById + (track.id to track)
+        mediaController.addMediaItem(MediaItemFactory.create(track))
+    }
+
     fun next() {
         controller?.seekToNextMediaItem()
     }

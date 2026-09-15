@@ -27,6 +27,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
@@ -36,6 +38,8 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
@@ -294,12 +298,53 @@ fun PlayerScreen(
 
                 itemsIndexed(state.queue, key = { _, item -> item.mediaId }) { index, item ->
                     var dragOffset by remember(item.mediaId) { mutableFloatStateOf(0f) }
+                    var queueMenuExpanded by remember(item.mediaId) { mutableStateOf(false) }
                     ListItem(
                         headlineContent = { Text(item.title) },
                         supportingContent = { Text(item.artist ?: if (item.isCurrent) "正在播放" else "接下来播放") },
                         trailingContent = {
-                            IconButton(onClick = { playbackController.removeQueueItem(index) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "从队列移除")
+                            Box {
+                                IconButton(onClick = { queueMenuExpanded = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "更多操作")
+                                }
+                                DropdownMenu(
+                                    expanded = queueMenuExpanded,
+                                    onDismissRequest = { queueMenuExpanded = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("立即播放") },
+                                        onClick = {
+                                            queueMenuExpanded = false
+                                            playbackController.seekToQueueItem(index)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("上移") },
+                                        leadingIcon = { Icon(Icons.Default.KeyboardArrowUp, null) },
+                                        enabled = index > 0,
+                                        onClick = {
+                                            queueMenuExpanded = false
+                                            playbackController.moveQueueItem(index, index - 1)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("下移") },
+                                        leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, null) },
+                                        enabled = index < state.queue.lastIndex,
+                                        onClick = {
+                                            queueMenuExpanded = false
+                                            playbackController.moveQueueItem(index, index + 1)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("从队列移除") },
+                                        leadingIcon = { Icon(Icons.Default.Delete, null) },
+                                        onClick = {
+                                            queueMenuExpanded = false
+                                            playbackController.removeQueueItem(index)
+                                        },
+                                    )
+                                }
                             }
                         },
                         colors = androidx.compose.material3.ListItemDefaults.colors(

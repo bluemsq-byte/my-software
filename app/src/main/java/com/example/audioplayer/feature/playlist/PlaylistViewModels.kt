@@ -90,6 +90,14 @@ class PlaylistDetailViewModel @Inject constructor(
         }
     }
 
+    fun playNext(item: PlaylistItem) {
+        playbackController.playNext(item.toAudioTrack())
+    }
+
+    fun addToQueue(item: PlaylistItem) {
+        playbackController.addToQueue(item.toAudioTrack())
+    }
+
     fun enterSelectionMode() {
         _state.value = _state.value.copy(selectionMode = true, selectedItemIds = emptySet())
     }
