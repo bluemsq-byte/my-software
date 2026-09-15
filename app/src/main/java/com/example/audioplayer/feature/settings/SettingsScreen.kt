@@ -9,11 +9,15 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -34,6 +38,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -119,13 +125,17 @@ fun SettingsScreen(
                     }
                 }
                 Text("颜色主题", style = MaterialTheme.typography.bodyLarge)
-                AppThemeColor.entries.chunked(3).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppThemeColor.entries.chunked(2).forEach { row ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         row.forEach { color ->
-                            FilterChip(
+                            ThemeTile(
+                                color = color,
                                 selected = themeColor == color,
                                 onClick = { viewModel.setThemeColor(color) },
-                                label = { Text(themeLabel(color)) },
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }
@@ -218,6 +228,38 @@ private fun themeLabel(color: AppThemeColor): String = when (color) {
     AppThemeColor.SUNSET_ORANGE -> "日落橙"
     AppThemeColor.SAKURA_PINK -> "樱花粉"
     AppThemeColor.TEAL -> "青绿色"
+}
+
+@Composable
+private fun ThemeTile(
+    color: AppThemeColor,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = when (color) {
+        AppThemeColor.SKY_BLUE -> listOf(Color(0xFF277CC1), Color(0xFF42B4AC))
+        AppThemeColor.FOREST_GREEN -> listOf(Color(0xFF3E8D58), Color(0xFF9EC76B))
+        AppThemeColor.VIOLET -> listOf(Color(0xFF7E4FBB), Color(0xFFB17BD3))
+        AppThemeColor.SUNSET_ORANGE -> listOf(Color(0xFFD4762B), Color(0xFFF1B65B))
+        AppThemeColor.SAKURA_PINK -> listOf(Color(0xFFC94F7C), Color(0xFFF0A6BD))
+        AppThemeColor.TEAL -> listOf(Color(0xFF0D9488), Color(0xFF5BBFAF))
+    }
+    Box(
+        modifier = modifier
+            .height(64.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            .background(Brush.linearGradient(colors))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        contentAlignment = androidx.compose.ui.Alignment.BottomStart,
+    ) {
+        Text(
+            text = if (selected) "✓ ${themeLabel(color)}" else themeLabel(color),
+            color = Color.White,
+            style = MaterialTheme.typography.titleSmall,
+        )
+    }
 }
 
 private fun formatBytes(bytes: Long): String {

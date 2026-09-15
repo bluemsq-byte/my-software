@@ -101,6 +101,14 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    fun playFolder() {
+        viewModelScope.launch {
+            val state = _state.value
+            val queue = remoteFileRepository.buildQueue(connectionId, state.path, state.entries)
+            if (queue.isNotEmpty()) playbackController.play(queue, 0)
+        }
+    }
+
     fun playNext(entry: RemoteEntry) {
         viewModelScope.launch {
             val state = _state.value
