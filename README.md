@@ -1,4 +1,4 @@
-# 音频播放器 v1.8.0
+# 音频播放器 v1.8.1
 
 安卓本地与群晖 NAS 音频播放器。首页提供本地音乐库、网络音乐、最近播放和播放列表入口。
 
@@ -39,11 +39,14 @@
 - 本地音乐库增加专辑和歌手聚合视图。
 - 定时播放失败会重试一次，仍失败则跳过并通知。
 - 设置页支持无密码备份和恢复连接、播放列表、定时及主题。
+- 首页改为“继续播放 + 本地音乐/网络音乐双入口”，最近播放移动到首页区域。
+- 底部导航精简为首页、播放列表、定时和设置。
+- 定时任务改为大时间卡片，删除操作移动到编辑页面。
 
 ## 安装包
 
-- Release APK：`dist/audio-player-v1.8.0.apk`
-- Debug APK：`dist/audio-player-v1.8.0-debug.apk`
+- Release APK：`dist/audio-player-v1.8.1.apk`
+- Debug APK：`dist/audio-player-v1.8.1-debug.apk`
 - SHA-256：`dist/SHA256SUMS.txt`
 
 Release APK 已使用本项目的本地发布密钥签名。密钥位于 `.secrets/audio-player-release.jks`，签名配置位于

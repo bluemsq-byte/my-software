@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>定时任务 UI 方案草图</title>
+  <style>
+    :root {
+      --page: #eef2f1;
+      --ink: #17201e;
+      --muted: #64716e;
+      --line: rgba(23, 32, 30, .12);
+      --glass: rgba(255, 255, 255, .72);
+      --glass-strong: rgba(255, 255, 255, .86);
+      --teal: #0d9488;
+      --teal-dark: #0f766e;
+      --shadow: 0 12px 34px rgba(16, 32, 28, .12);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(13, 148, 136, .18), transparent 32rem),
+        radial-gradient(circle at 92% 6%, rgba(37, 99, 235, .10), transparent 30rem),
+        var(--page);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    .page { max-width: 1780px; margin: 0 auto; padding: 36px 28px 72px; }
+    h1 { margin: 0; font-size: 32px; }
+    .lead { margin: 8px 0 28px; color: var(--muted); max-width: 820px; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(340px, 1fr));
+      gap: 24px;
+      align-items: start;
+    }
+    .option { min-width: 0; }
+    .option h2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px 8px;
+      font-size: 16px;
+    }
+    .recommended {
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--teal);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .caption {
+      min-height: 52px;
+      margin: 10px 8px 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .phone {
+      position: relative;
+      width: 360px;
+      height: 760px;
+      margin: 0 auto;
+      overflow: hidden;
+      border: 8px solid #17201e;
+      border-radius: 34px;
+      background:
+        radial-gradient(circle at 18% 2%, rgba(13, 148, 136, .15), transparent 15rem),
+        linear-gradient(145deg, rgba(255,255,255,.86), rgba(236,246,243,.82));
+      box-shadow: var(--shadow);
+    }
+    .screen {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .status {
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .appbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.28);
+      backdrop-filter: blur(18px);
+    }
+    .appbar h3 { flex: 1; margin: 0; font-size: 20px; }
+    .action {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: var(--glass);
+      font-size: 20px;
+    }
+    .content {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      padding: 12px 0;
+    }
+    .glass {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--glass-strong), var(--glass));
+      backdrop-filter: blur(20px);
+      box-shadow: 0 7px 18px rgba(15, 35, 31, .06);
+    }
+
+    /* Option 1 */
+    .lean-card {
+      display: grid;
+      grid-template-columns: 72px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      min-height: 88px;
+      margin: 8px 14px;
+      padding: 12px;
+    }
+    .time {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -.4px;
+    }
+    .meta b { display: block; font-size: 16px; }
+    .meta small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .switch {
+      width: 46px;
+      height: 26px;
+      padding: 3px;
+      border-radius: 999px;
+      background: var(--teal);
+    }
+    .switch::after {
+      content: "";
+      display: block;
+      width: 20px;
+      height: 20px;
+      margin-left: 20px;
+      border-radius: 50%;
+      background: #fff;
+    }
+    .switch.off { background: rgba(100,113,110,.28); }
+    .switch.off::after { margin-left: 0; }
+
+    /* Option 2 */
+    .section-label {
+      margin: 12px 16px 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 74px;
+      margin: 6px 14px;
+      padding: 10px 12px;
+    }
+    .timeline-time {
+      color: var(--teal-dark);
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .line {
+      width: 1px;
+      height: 34px;
+      margin: 0 auto;
+      background: rgba(13,148,136,.28);
+    }
+
+    /* Option 3 */
+    .hero {
+      margin: 4px 14px 12px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .hero-time { font-size: 34px; font-weight: 750; }
+    .hero b { display: block; font-size: 16px; }
+    .hero small { color: var(--muted); font-size: 12px; }
+    .quick-row {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      min-height: 68px;
+      margin: 6px 14px;
+      padding: 9px 12px;
+    }
+
+    /* Option 4 */
+    .group {
+      margin: 8px 14px;
+      overflow: hidden;
+    }
+    .group-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      min-height: 74px;
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .group-row:last-child { border-bottom: 0; }
+    .group-row b { display: block; font-size: 16px; }
+    .group-row small { display: block; color: var(--muted); font-size: 12px; }
+    .time-inline {
+      color: var(--teal);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .footer-note {
+      margin: 12px 16px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .nav {
+      height: 62px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      border-top: 1px solid var(--line);
+      background: rgba(248,251,250,.90);
+      backdrop-filter: blur(18px);
+    }
+    .nav span {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 2px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .nav span.active { color: var(--teal); font-weight: 700; }
+    .nav i { font-size: 15px; font-style: normal; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>定时任务 · 简化 UI 草图</h1>
+    <p class="lead">四套方案都保留启用开关、时间、下次执行和新增入口，但减少卡片嵌套、删除按钮和重复文字。</p>
+    <section class="board">
+      <article class="option">
+        <h2>方案 1 · 大时间卡片 <span class="recommended">推荐</span></h2>
+        <div class="phone">
+          <div class="screen">
+            <div class="status"><span>21:27</span><span>Wi-Fi 100%</span></div>
+            <div class="appbar"><h3>定时任务</h3><div class="action">＋</div></div>
+            <div class="content">
+              <div class="glass lean-card">
+                <div class="time">07:30</div>
+                <div class="meta"><b>早晨音乐</b><small>每天 · 下次 9月17日</small></div>
+                <div class="switch"></div>
+              </div>
+              <div class="glass lean-card">
+                <div class="time">23:30</div>
+                <div class="meta"><b>睡眠停止</b><small>每天 · 当前播放队列</small></div>
+                <div class="switch"></div>
+              </div>
+              <div class="glass lean-card">
+                <div class="time">08:00</div>
+                <div class="meta"><b>周末音乐</b><small>周六、周日 · NAS / Music</small></div>
+                <div class="switch off"></div>
+              </div>
+            </div>
+            <div class="nav">
+              <span><i>⌂</i>首页</span><span><i>◷</i>最近</span><span><i>≡</i>播放列表</span><span class="active"><i>⏱</i>定时</span><span><i>⚙</i>设置</span>
+            </div>
+          </div>
+        </div>
+        <p class="caption">最容易扫读。时间成为视觉主角，整张卡片点击进入编辑，删除放进编辑页，不再挤在列表里。</p>
+      </article>
+
+      <article class="option">
+        <h2>方案 2 · 今日时间线</h2>
+        <div class="phone">
+          <div class="screen">
+            <div class="status"><span>21:27</span><span>Wi-Fi 100%</span></div>
+            <div class="appbar"><h3>定时任务</h3><div class="action">＋</div></div>
+            <div class="content">
+              <div class="section-label">今天</div>
+              <div class="glass timeline-row">
+                <div class="timeline-time">07:30</div>
+                <div class="meta"><b>早晨音乐</b><small>开始播放 · NAS / Morning</small></div>
+                <div class="switch"></div>
+              </div>
+              <div class="glass timeline-row">
+                <div class="timeline-time">23:30</div>
+                <div class="meta"><b>睡眠停止</b><small>停止播放 · 当前队列</small></div>
+                <div class="switch"></div>
+              </div>
+              <div class="section-label">明天</div>
+              <div class="glass timeline-row">
+                <div class="timeline-time">08:00</div>
+                <div class="meta"><b>周末音乐</b><small>周六、周日 · 本地音乐</small></div>
+                <div class="switch off"></div>
+              </div>
+            </div>
+            <div class="nav">
+              <span><i>⌂</i>首页</span><span><i>◷</i>最近</span><span><i>≡</i>播放列表</span><span class="active"><i>⏱</i>定时</span><span><i>⚙</i>设置</span>
+            </div>
+          </div>
+        </div>
+        <p class="caption">更强调“什么时候执行”，适合任务较多、经常按日期查看的用户，但比方案 1 多一层分组。</p>
+      </article>
+
+      <article class="option">
+        <h2>方案 3 · 下次任务重点</h2>
+        <div class="phone">
+          <div class="screen">
+            <div class="status"><span>21:27</span><span>Wi-Fi 100%</span></div>
+            <div class="appbar"><h3>定时任务</h3><div class="action">＋</div></div>
+            <div class="content">
+              <div class="glass hero">
+                <div class="hero-time">07:30</div>
+                <div><b>早晨音乐</b><small>明天 07:30 · NAS / Morning</small></div>
+              </div>
+              <div class="glass quick-row">
+                <div class="time">23:30</div>
+                <div class="meta"><b>睡眠停止</b><small>每天 · 当前队列</small></div>
+                <div class="switch"></div>
+              </div>
+              <div class="glass quick-row">
+                <div class="time">08:00</div>
+                <div class="meta"><b>周末音乐</b><small>周六、周日</small></div>
+                <div class="switch off"></div>
+              </div>
+            </div>
+            <div class="nav">
+              <span><i>⌂</i>首页</span><span><i>◷</i>最近</span><span><i>≡</i>播放列表</span><span class="active"><i>⏱</i>定时</span><span><i>⚙</i>设置</span>
+            </div>
+          </div>
+        </div>
+        <p class="caption">首页只突出最近一次任务，适合大多数时候只有一两个定时的用户。任务多时，下面会变成长列表。</p>
+      </article>
+
+      <article class="option">
+        <h2>方案 4 · 极简分组列表</h2>
+        <div class="phone">
+          <div class="screen">
+            <div class="status"><span>21:27</span><span>Wi-Fi 100%</span></div>
+            <div class="appbar"><h3>定时任务</h3><div class="action">＋</div></div>
+            <div class="content">
+              <div class="glass group">
+                <div class="group-row">
+                  <div><b>早晨音乐</b><small>开始播放 · 每天</small></div>
+                  <div class="time-inline">07:30</div>
+                </div>
+                <div class="group-row">
+                  <div><b>睡眠停止</b><small>停止播放 · 每天</small></div>
+                  <div class="time-inline">23:30</div>
+                </div>
+                <div class="group-row">
+                  <div><b>周末音乐</b><small>开始播放 · 周六、周日</small></div>
+                  <div class="time-inline">08:00</div>
+                </div>
+              </div>
+              <p class="footer-note">点击任意任务进入编辑和开关设置</p>
+            </div>
+            <div class="nav">
+              <span><i>⌂</i>首页</span><span><i>◷</i>最近</span><span><i>≡</i>播放列表</span><span class="active"><i>⏱</i>定时</span><span><i>⚙</i>设置</span>
+            </div>
+          </div>
+        </div>
+        <p class="caption">最省空间，信息密度最高。适合任务很多，但一眼看到“开没开”和“几点执行”的速度稍慢。</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -34,7 +33,7 @@ fun Sketch14TimerListScreen(
 ) {
     SketchBaseScreen {
         SketchMainScaffold(
-            selectedNavIndex = 3,
+            selectedNavIndex = 2,
             onNavSelected = onNavSelected,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -175,7 +174,7 @@ fun Sketch16SettingsScreen(
 ) {
     SketchBaseScreen {
         SketchMainScaffold(
-            selectedNavIndex = 4,
+            selectedNavIndex = 3,
             onNavSelected = onNavSelected,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -251,7 +250,6 @@ fun SketchTimerCard(
     timer: SketchTimerUiModel,
     onClick: () -> Unit = {},
     onEnabledChange: (Boolean) -> Unit = {},
-    onDelete: () -> Unit = {},
 ) {
     SketchGlassCard(
         modifier = Modifier
@@ -263,13 +261,39 @@ fun SketchTimerCard(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(SketchSpacing.Md),
         ) {
             Text(
-                text = timer.name,
-                modifier = Modifier.weight(1f),
+                text = timer.time,
                 color = SketchDesign.colors.ink,
-                style = SketchTextStyles.RowTitle,
+                style = SketchTextStyles.SectionTitle,
             )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = timer.name,
+                    color = SketchDesign.colors.ink,
+                    style = SketchTextStyles.RowTitle,
+                    maxLines = 1,
+                )
+                Text(
+                    text = if (timer.action == SketchTimerAction.START) {
+                        "开始播放 · ${timer.repeatText}"
+                    } else {
+                        "停止播放 · ${timer.repeatText}"
+                    },
+                    color = SketchDesign.colors.muted,
+                    style = SketchTextStyles.Auxiliary,
+                    maxLines = 2,
+                )
+                if (timer.sourceText.isNotBlank()) {
+                    Text(
+                        text = timer.sourceText,
+                        color = SketchDesign.colors.muted,
+                        style = SketchTextStyles.Auxiliary,
+                        maxLines = 1,
+                    )
+                }
+            }
             Switch(
                 checked = timer.enabled,
                 onCheckedChange = onEnabledChange,
@@ -280,26 +304,7 @@ fun SketchTimerCard(
                     uncheckedTrackColor = SketchDesign.colors.glass,
                 ),
             )
-            SketchIconAction(
-                icon = Icons.Default.Delete,
-                contentDescription = "删除定时",
-                onClick = onDelete,
-            )
         }
-        Text(
-            text = "${timer.time} · ${
-                if (timer.action == SketchTimerAction.START) "开始播放" else "停止播放"
-            }",
-            color = SketchDesign.colors.ink,
-            style = SketchTextStyles.RowSubtitle,
-            modifier = Modifier.padding(top = SketchSpacing.Xs),
-        )
-        Text(
-            text = "${timer.repeatText} · ${timer.sourceText}",
-            color = SketchDesign.colors.muted,
-            style = SketchTextStyles.Auxiliary,
-            modifier = Modifier.padding(top = SketchSpacing.Xs),
-        )
     }
 }
 

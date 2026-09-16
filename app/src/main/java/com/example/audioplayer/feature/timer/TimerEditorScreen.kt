@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
@@ -93,6 +94,13 @@ fun TimerEditorScreen(
                     title = if (state.id == 0L) "新建定时" else "编辑定时",
                     onBack = onBack,
                     actions = {
+                        if (state.id > 0L) {
+                            SketchIconAction(
+                                icon = Icons.Default.Delete,
+                                contentDescription = "删除定时",
+                                onClick = { viewModel.delete(onBack) },
+                            )
+                        }
                         SketchIconAction(
                             icon = Icons.Default.Check,
                             contentDescription = "保存定时",

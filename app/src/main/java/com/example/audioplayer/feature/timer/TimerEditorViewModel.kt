@@ -208,6 +208,23 @@ class TimerEditorViewModel @Inject constructor(
         }
     }
 
+    fun delete(onDeleted: () -> Unit) {
+        val taskId = _state.value.id
+        if (taskId <= 0L) return
+        viewModelScope.launch {
+            runCatching {
+                timerRepository.get(taskId)?.let { task ->
+                    scheduler.cancel(task.id)
+                    timerRepository.delete(task)
+                }
+            }.onSuccess {
+                onDeleted()
+            }.onFailure { error ->
+                update { copy(message = error.message ?: "删除定时失败") }
+            }
+        }
+    }
+
     private fun TimerTask.toUiState() = TimerEditorUiState(
         id = id,
         name = name,

@@ -56,7 +56,6 @@ private const val ROUTE_GLOBAL_SEARCH = "global_search"
 
 private val MAIN_BOTTOM_NAV_ROUTES = setOf(
     ROUTE_LIBRARY,
-    ROUTE_RECENT,
     ROUTE_TIMERS,
     ROUTE_PLAYLISTS,
     ROUTE_SETTINGS,
@@ -103,10 +102,9 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                         SketchBottomNavigation(
                             selectedIndex = when (currentRouteBase) {
                                 ROUTE_LIBRARY, ROUTE_BROWSER, ROUTE_PLAYER -> if (currentRouteBase == ROUTE_PLAYER) -1 else 0
-                                ROUTE_RECENT -> 1
-                                ROUTE_PLAYLISTS -> 2
-                                ROUTE_TIMERS -> 3
-                                ROUTE_SETTINGS -> 4
+                                ROUTE_PLAYLISTS -> 1
+                                ROUTE_TIMERS -> 2
+                                ROUTE_SETTINGS -> 3
                                 else -> -1
                             },
                             onSelected = { index ->
@@ -115,10 +113,9 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                                         popUpTo(ROUTE_LIBRARY) { inclusive = true }
                                         launchSingleTop = true
                                     }
-                                    1 -> navController.navigate(ROUTE_RECENT) { launchSingleTop = true }
-                                    2 -> navController.navigate(ROUTE_PLAYLISTS) { launchSingleTop = true }
-                                    3 -> navController.navigate(ROUTE_TIMERS) { launchSingleTop = true }
-                                    4 -> navController.navigate(ROUTE_SETTINGS) { launchSingleTop = true }
+                                    1 -> navController.navigate(ROUTE_PLAYLISTS) { launchSingleTop = true }
+                                    2 -> navController.navigate(ROUTE_TIMERS) { launchSingleTop = true }
+                                    3 -> navController.navigate(ROUTE_SETTINGS) { launchSingleTop = true }
                                 }
                             },
                         )
@@ -148,6 +145,7 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                     initialTab = if (entry.arguments?.getString("tab") == "network") 1 else 0,
                     onAddConnection = { navController.navigate(ROUTE_ADD_NETWORK_MUSIC) },
                     onOpenSearch = { navController.navigate(ROUTE_GLOBAL_SEARCH) },
+                    onOpenRecent = { navController.navigate(ROUTE_RECENT) },
                     onOpenConnection = { connection ->
                         if (connection.protocol == com.example.audioplayer.core.model.ConnectionProtocol.SMB &&
                             connection.selectedShare.isNullOrBlank()

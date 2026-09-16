@@ -102,7 +102,6 @@ fun TimerListScreen(
                             ),
                             onClick = { onEditTimer(task) },
                             onEnabledChange = { viewModel.toggle(task, it) },
-                            onDelete = { viewModel.delete(task) },
                         )
                     }
                 }

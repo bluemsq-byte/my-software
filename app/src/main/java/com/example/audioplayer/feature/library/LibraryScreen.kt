@@ -12,11 +12,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
@@ -38,6 +43,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.database.ConnectionEntity
 import com.example.audioplayer.core.model.AudioTrack
+import com.example.audioplayer.core.model.RecentPlay
+import com.example.audioplayer.core.playback.PlaybackUiState
 import com.example.audioplayer.core.storage.MediaPermission
 import com.example.audioplayer.ui.formatDuration
 import com.example.audioplayer.ui.sketch.SketchConnectionRow
@@ -47,10 +54,12 @@ import com.example.audioplayer.ui.sketch.SketchDesign
 import com.example.audioplayer.ui.sketch.SketchEmptyState
 import com.example.audioplayer.ui.sketch.SketchFolderRow
 import com.example.audioplayer.ui.sketch.SketchFolderUiModel
+import com.example.audioplayer.ui.sketch.SketchGlassCard
 import com.example.audioplayer.ui.sketch.SketchIconAction
 import com.example.audioplayer.ui.sketch.SketchMenuActionUiModel
 import com.example.audioplayer.ui.sketch.SketchPill
 import com.example.audioplayer.ui.sketch.SketchSearchField
+import com.example.audioplayer.ui.sketch.SketchSectionTitle
 import com.example.audioplayer.ui.sketch.SketchSegmentedTabs
 import com.example.audioplayer.ui.sketch.SketchSpacing
 import com.example.audioplayer.ui.sketch.SketchTextStyles
@@ -68,6 +77,7 @@ fun LibraryScreen(
     initialTab: Int = 0,
     onAddConnection: () -> Unit,
     onOpenSearch: () -> Unit,
+    onOpenRecent: () -> Unit,
     onOpenConnection: (ConnectionEntity) -> Unit,
     onEditConnection: (ConnectionEntity) -> Unit,
     viewModel: LibraryViewModel = hiltViewModel(),
@@ -77,8 +87,11 @@ fun LibraryScreen(
     val connections by viewModel.connections.collectAsStateWithLifecycle()
     val connectionMessage by viewModel.connectionMessage.collectAsStateWithLifecycle()
     val playbackState by viewModel.playbackState.collectAsStateWithLifecycle()
+    val recentPlays by viewModel.recentPlays.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var selectedTab by remember { mutableIntStateOf(initialTab) }
+    var pane by remember {
+        mutableStateOf(if (initialTab == 1) LibraryPane.NETWORK else LibraryPane.HOME)
+    }
     var localViewMode by remember { mutableStateOf(LibraryViewMode.SONGS) }
     var hasPermission by remember { mutableStateOf(MediaPermission.isGranted(context)) }
 
@@ -109,59 +122,235 @@ fun LibraryScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            SketchTopBar(
-                title = "音乐",
-                actions = {
-                    SketchIconAction(
-                        icon = Icons.Default.Search,
-                        contentDescription = "全局搜索",
-                        onClick = onOpenSearch,
+            when (pane) {
+                LibraryPane.HOME -> {
+                    SketchTopBar(
+                        title = "音乐",
+                        actions = {
+                            SketchIconAction(
+                                icon = Icons.Default.Search,
+                                contentDescription = "全局搜索",
+                                onClick = onOpenSearch,
+                            )
+                            SketchIconAction(
+                                icon = Icons.Default.Add,
+                                contentDescription = "添加网络音乐",
+                                onClick = onAddConnection,
+                            )
+                        },
                     )
-                    SketchIconAction(
-                        icon = Icons.Default.Add,
-                        contentDescription = "添加网络音乐",
-                        onClick = onAddConnection,
+                    HomeContent(
+                        playbackState = playbackState,
+                        recentPlays = recentPlays,
+                        connectionCount = connections.size,
+                        songCount = localState.tracks.size,
+                        onResumePlayback = viewModel::resumePlayback,
+                        onOpenLocal = { pane = LibraryPane.LOCAL },
+                        onOpenNetwork = { pane = LibraryPane.NETWORK },
+                        onOpenRecent = onOpenRecent,
+                        onPlayRecent = viewModel::playRecent,
                     )
-                },
-            )
-            if (playbackState.currentTrackId != null) {
+                }
+
+                LibraryPane.LOCAL -> {
+                    SketchTopBar(
+                        title = "本地音乐",
+                        onBack = { pane = LibraryPane.HOME },
+                        actions = {
+                            SketchIconAction(
+                                icon = Icons.Default.Search,
+                                contentDescription = "全局搜索",
+                                onClick = onOpenSearch,
+                            )
+                        },
+                    )
+                    LocalMusicContent(
+                        state = localState,
+                        hasPermission = hasPermission,
+                        viewMode = localViewMode,
+                        onViewModeChange = { localViewMode = it },
+                        onRequestPermission = {
+                            permissionLauncher.launch(MediaPermission.permission)
+                        },
+                        onOpenNetworkMusic = {
+                            pane = LibraryPane.NETWORK
+                        },
+                        onRefresh = { viewModel.loadLocal(force = true) },
+                        onSearch = viewModel::updateLocalSearchQuery,
+                        onPlay = viewModel::play,
+                        onPlayNext = viewModel::playNext,
+                        onAddToQueue = viewModel::addToQueue,
+                    )
+                }
+
+                LibraryPane.NETWORK -> {
+                    SketchTopBar(
+                        title = "网络音乐",
+                        onBack = { pane = LibraryPane.HOME },
+                        actions = {
+                            SketchIconAction(
+                                icon = Icons.Default.Add,
+                                contentDescription = "添加网络音乐",
+                                onClick = onAddConnection,
+                            )
+                        },
+                    )
+                    NetworkMusicContent(
+                        connections = connections,
+                        onAddConnection = onAddConnection,
+                        onOpenConnection = onOpenConnection,
+                        onDeleteConnection = viewModel::deleteConnection,
+                        onEditConnection = onEditConnection,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeContent(
+    playbackState: PlaybackUiState,
+    recentPlays: List<RecentPlay>,
+    connectionCount: Int,
+    songCount: Int,
+    onResumePlayback: () -> Unit,
+    onOpenLocal: () -> Unit,
+    onOpenNetwork: () -> Unit,
+    onOpenRecent: () -> Unit,
+    onPlayRecent: (RecentPlay) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = SketchSpacing.Xl),
+    ) {
+        if (playbackState.currentTrackId != null) {
+            item {
                 SketchContinuePlayingCard(
                     title = playbackState.title,
                     artist = playbackState.artist.orEmpty(),
                     isPlaying = playbackState.isPlaying,
-                    onClick = viewModel::resumePlayback,
+                    onClick = onResumePlayback,
                 )
             }
-            if (selectedTab == 0) {
-                LocalMusicContent(
-                    state = localState,
-                    hasPermission = hasPermission,
-                    viewMode = localViewMode,
-                    onViewModeChange = { localViewMode = it },
-                    onRequestPermission = { permissionLauncher.launch(MediaPermission.permission) },
-                    onOpenNetworkMusic = {
-                        selectedTab = 1
-                        onAddConnection()
-                    },
-                    onRefresh = { viewModel.loadLocal(force = true) },
-                    onSearch = viewModel::updateLocalSearchQuery,
-                    onTabSelected = { selectedTab = it },
-                    onPlay = viewModel::play,
-                    onPlayNext = viewModel::playNext,
-                    onAddToQueue = viewModel::addToQueue,
+        }
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = SketchSpacing.Page, vertical = SketchSpacing.Xs),
+                horizontalArrangement = Arrangement.spacedBy(SketchSpacing.Md),
+            ) {
+                HomeEntryCard(
+                    title = "本地音乐",
+                    subtitle = "$songCount 首",
+                    icon = Icons.Default.Folder,
+                    onClick = onOpenLocal,
+                    modifier = Modifier.weight(1f),
                 )
-            } else {
-                NetworkMusicContent(
-                    connections = connections,
-                    onAddConnection = onAddConnection,
-                    onOpenConnection = onOpenConnection,
-                    onDeleteConnection = viewModel::deleteConnection,
-                    onEditConnection = onEditConnection,
-                    onTabSelected = { selectedTab = it },
+                HomeEntryCard(
+                    title = "网络音乐",
+                    subtitle = "$connectionCount 个连接",
+                    icon = Icons.Default.Cloud,
+                    onClick = onOpenNetwork,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = SketchSpacing.Page,
+                        end = SketchSpacing.Page,
+                        top = SketchSpacing.Lg,
+                        bottom = SketchSpacing.Xs,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SketchSectionTitle(
+                    text = "最近播放",
+                    modifier = Modifier.weight(1f),
+                    style = SketchTextStyles.RowTitle,
+                )
+                Text(
+                    text = "查看全部",
+                    color = SketchDesign.colors.primary,
+                    style = SketchTextStyles.Auxiliary,
+                    modifier = Modifier.clickable(onClick = onOpenRecent),
+                )
+            }
+        }
+        if (recentPlays.isEmpty()) {
+            item {
+                Text(
+                    text = "还没有最近播放记录",
+                    color = SketchDesign.colors.muted,
+                    style = SketchTextStyles.RowSubtitle,
+                    modifier = Modifier.padding(
+                        horizontal = SketchSpacing.Page,
+                        vertical = SketchSpacing.Md,
+                    ),
+                )
+            }
+        } else {
+            items(recentPlays.take(2), key = { "home-recent-${it.mediaId}" }) { item ->
+                SketchTrackRow(
+                    track = SketchTrackUiModel(
+                        id = item.mediaId,
+                        title = item.title,
+                        artist = item.artist ?: "未知歌手",
+                        album = item.album.orEmpty(),
+                        duration = formatDuration(item.durationMillis),
+                    ),
+                    onPlay = { onPlayRecent(item) },
+                    actions = listOf(
+                        SketchMenuActionUiModel("立即播放") {
+                            onPlayRecent(item)
+                        },
+                    ),
                 )
             }
         }
     }
+}
+
+@Composable
+private fun HomeEntryCard(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SketchGlassCard(
+        modifier = modifier,
+        contentPadding = PaddingValues(SketchSpacing.Md),
+        onClick = onClick,
+    ) {
+        SketchIconAction(
+            icon = icon,
+            contentDescription = "",
+        )
+        Spacer(modifier = Modifier.padding(top = SketchSpacing.Sm))
+        Text(
+            text = title,
+            color = SketchDesign.colors.ink,
+            style = SketchTextStyles.RowTitle,
+        )
+        Text(
+            text = subtitle,
+            color = SketchDesign.colors.muted,
+            style = SketchTextStyles.Auxiliary,
+        )
+    }
+}
+
+private enum class LibraryPane {
+    HOME,
+    LOCAL,
+    NETWORK,
 }
 
 @Composable
@@ -174,7 +363,6 @@ private fun LocalMusicContent(
     onOpenNetworkMusic: () -> Unit,
     onRefresh: () -> Unit,
     onSearch: (String) -> Unit,
-    onTabSelected: (Int) -> Unit,
     onPlay: (List<AudioTrack>, Int) -> Unit,
     onPlayNext: (AudioTrack) -> Unit,
     onAddToQueue: (AudioTrack) -> Unit,
@@ -254,12 +442,6 @@ private fun LocalMusicContent(
                     value = state.searchQuery,
                     placeholder = "搜索本地音乐",
                     onValueChange = onSearch,
-                    modifier = Modifier.padding(horizontal = SketchSpacing.Page),
-                )
-                SketchSegmentedTabs(
-                    titles = listOf("本地音乐", "网络音乐"),
-                    selectedIndex = 0,
-                    onSelected = onTabSelected,
                     modifier = Modifier.padding(horizontal = SketchSpacing.Page),
                 )
                 Row(
@@ -388,7 +570,6 @@ private fun NetworkMusicContent(
     onOpenConnection: (ConnectionEntity) -> Unit,
     onDeleteConnection: (ConnectionEntity) -> Unit,
     onEditConnection: (ConnectionEntity) -> Unit,
-    onTabSelected: (Int) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -396,12 +577,6 @@ private fun NetworkMusicContent(
             .padding(top = SketchSpacing.Sm),
         verticalArrangement = Arrangement.spacedBy(SketchSpacing.Sm),
     ) {
-        SketchSegmentedTabs(
-            titles = listOf("本地音乐", "网络音乐"),
-            selectedIndex = 1,
-            onSelected = onTabSelected,
-            modifier = Modifier.padding(horizontal = SketchSpacing.Page),
-        )
         if (connections.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),

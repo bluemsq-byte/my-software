@@ -30,7 +30,7 @@ fun Sketch09RecentPlayScreen(
 ) {
     SketchBaseScreen {
         SketchMainScaffold(
-            selectedNavIndex = 1,
+            selectedNavIndex = -1,
             onNavSelected = onNavSelected,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -75,7 +75,7 @@ fun Sketch10PlaylistListScreen(
 ) {
     SketchBaseScreen {
         SketchMainScaffold(
-            selectedNavIndex = 2,
+            selectedNavIndex = 1,
             onNavSelected = onNavSelected,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {

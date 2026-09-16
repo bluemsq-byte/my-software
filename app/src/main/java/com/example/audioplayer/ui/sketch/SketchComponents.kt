@@ -1006,7 +1006,6 @@ fun SketchBottomNavigation(
     val colors = SketchDesign.colors
     val items = listOf(
         SketchNavItemUiModel("首页") to Icons.Default.Home,
-        SketchNavItemUiModel("最近") to Icons.Default.History,
         SketchNavItemUiModel("播放列表") to Icons.AutoMirrored.Filled.QueueMusic,
         SketchNavItemUiModel("定时") to Icons.Default.Timer,
         SketchNavItemUiModel("设置") to Icons.Default.Settings,
