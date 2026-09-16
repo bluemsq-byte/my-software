@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+
 package com.example.audioplayer.core.settings
 
 import android.content.Context
@@ -8,6 +10,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import androidx.media3.datasource.cache.Cache
 
 data class CacheUsage(
     val totalBytes: Long,
@@ -21,17 +24,22 @@ data class CacheUsage(
 class CacheManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val httpClient: OkHttpClient,
+    private val mediaCache: Cache,
 ) {
     suspend fun usage(): CacheUsage = withContext(Dispatchers.IO) {
         CacheUsage(
             totalBytes = directorySize(context.cacheDir),
-            networkBytes = httpClient.cache?.size().orZero(),
+            networkBytes = httpClient.cache?.size().orZero() + mediaCache.cacheSpace,
         )
     }
 
     suspend fun clear(): CacheUsage = withContext(Dispatchers.IO) {
         httpClient.cache?.evictAll()
+        mediaCache.keys.toList().forEach { key -> mediaCache.removeResource(key) }
         context.cacheDir.listFiles()?.forEach { child ->
+            if (child.name == "media_cache" || child.name == "http_cache") {
+                return@forEach
+            }
             if (child.canonicalPath.startsWith(context.cacheDir.canonicalPath) && child != context.cacheDir) {
                 child.deleteRecursively()
             }

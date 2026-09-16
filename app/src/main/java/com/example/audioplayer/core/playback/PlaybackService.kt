@@ -14,6 +14,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.datasource.cache.Cache
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.example.audioplayer.MainActivity
@@ -43,6 +44,7 @@ class PlaybackService : MediaSessionService() {
     @Inject lateinit var remoteFileRepository: RemoteFileRepository
     @Inject lateinit var localMediaRepository: LocalMediaRepository
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var mediaCache: Cache
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
@@ -55,7 +57,11 @@ class PlaybackService : MediaSessionService() {
         createNotificationChannels()
 
         val exoPlayer = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(
+                    AutoCacheDataSourceFactory(mediaCache, dataSourceFactory),
+                ),
+            )
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
             .build()

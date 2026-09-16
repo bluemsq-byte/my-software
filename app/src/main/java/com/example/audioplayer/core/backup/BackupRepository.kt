@@ -39,6 +39,10 @@ class BackupRepository @Inject constructor(
             put("themeColor", settingsRepository.themeColor.first().name)
             put("darkMode", settingsRepository.darkModeSetting.first().name)
             put("backgroundPlayback", settingsRepository.backgroundPlaybackEnabled.first())
+            put(
+                "downloadNetworkOnPlaylistAdd",
+                settingsRepository.downloadNetworkOnPlaylistAdd.first(),
+            )
         })
         return root.toString(2)
     }
@@ -59,6 +63,11 @@ class BackupRepository @Inject constructor(
             if (settings.has("backgroundPlayback")) {
                 settingsRepository.setBackgroundPlaybackEnabled(
                     settings.optBoolean("backgroundPlayback", true),
+                )
+            }
+            if (settings.has("downloadNetworkOnPlaylistAdd")) {
+                settingsRepository.setDownloadNetworkOnPlaylistAdd(
+                    settings.optBoolean("downloadNetworkOnPlaylistAdd", false),
                 )
             }
         }

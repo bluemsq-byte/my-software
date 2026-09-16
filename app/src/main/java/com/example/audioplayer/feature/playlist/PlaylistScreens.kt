@@ -35,7 +35,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.model.AudioTrack
+import com.example.audioplayer.core.database.ConnectionEntity
+import com.example.audioplayer.feature.library.LibraryViewModel
 import com.example.audioplayer.ui.sketch.SketchBaseScreen
+import com.example.audioplayer.ui.sketch.SketchConnectionRow
+import com.example.audioplayer.ui.sketch.SketchConnectionUiModel
 import com.example.audioplayer.ui.sketch.SketchEmptyState
 import com.example.audioplayer.ui.sketch.SketchIconAction
 import com.example.audioplayer.ui.sketch.SketchMenuActionUiModel
@@ -47,6 +51,7 @@ import com.example.audioplayer.ui.sketch.SketchToolbar
 import com.example.audioplayer.ui.sketch.SketchTopBar
 import com.example.audioplayer.ui.sketch.SketchTrackRow
 import com.example.audioplayer.ui.sketch.SketchTrackUiModel
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * 播放列表列表页。
@@ -161,7 +166,7 @@ fun PlaylistListScreen(
 @Composable
 fun PlaylistDetailScreen(
     onBack: () -> Unit,
-    onAddNetworkSongs: () -> Unit,
+    onAddNetworkSongs: (Long) -> Unit,
     viewModel: PlaylistDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -203,7 +208,7 @@ fun PlaylistDetailScreen(
                     )
                     SketchPill(
                         label = "添加网络",
-                        onClick = onAddNetworkSongs,
+                        onClick = { onAddNetworkSongs(viewModel.playlistId) },
                     )
                 }
                 LazyColumn(
@@ -336,5 +341,63 @@ fun PlaylistDetailScreen(
                 Button(onClick = { viewModel.closeAddLocalDialog() }) { Text("取消") }
             },
         )
+    }
+}
+
+/**
+ * 从播放列表进入的网络音乐选择入口，先选择 NAS，再进入文件夹多选。
+ */
+@Composable
+fun PlaylistNetworkSourceScreen(
+    onBack: () -> Unit,
+    onConnectionSelected: (ConnectionEntity) -> Unit,
+    onAddConnection: () -> Unit,
+    viewModel: LibraryViewModel = hiltViewModel(),
+) {
+    val connections by viewModel.connections.collectAsStateWithLifecycle()
+
+    SketchBaseScreen {
+        Scaffold(containerColor = Color.Transparent) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                SketchTopBar(
+                    title = "选择网络音乐",
+                    onBack = onBack,
+                )
+                if (connections.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SketchEmptyState(
+                            title = "还没有网络音乐连接",
+                            description = "先添加 SMB 或 WebDAV 连接。",
+                            actionLabel = "添加网络音乐",
+                            onAction = onAddConnection,
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = SketchSpacing.Sm),
+                    ) {
+                        items(connections, key = ConnectionEntity::id) { connection ->
+                            SketchConnectionRow(
+                                connection = SketchConnectionUiModel(
+                                    id = connection.id,
+                                    name = connection.name,
+                                    protocol = connection.protocol.name,
+                                    status = "选择后浏览并添加歌曲",
+                                ),
+                                onClick = { onConnectionSelected(connection) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

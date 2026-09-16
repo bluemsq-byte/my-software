@@ -36,6 +36,9 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DarkModeSetting.SYSTEM)
     val themeColor: StateFlow<AppThemeColor> = settingsRepository.themeColor
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppThemeColor.SKY_BLUE)
+    val downloadNetworkOnPlaylistAdd: StateFlow<Boolean> =
+        settingsRepository.downloadNetworkOnPlaylistAdd
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     init {
         refreshCacheUsage()
@@ -51,6 +54,12 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeColor(color: AppThemeColor) {
         viewModelScope.launch { settingsRepository.setThemeColor(color) }
+    }
+
+    fun setDownloadNetworkOnPlaylistAdd(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setDownloadNetworkOnPlaylistAdd(enabled)
+        }
     }
 
     fun refreshCacheUsage() {

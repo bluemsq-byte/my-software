@@ -57,6 +57,8 @@ fun SettingsScreen(
     val cacheUsage by viewModel.cacheUsage.collectAsStateWithLifecycle()
     val darkModeSetting by viewModel.darkModeSetting.collectAsStateWithLifecycle()
     val themeColor by viewModel.themeColor.collectAsStateWithLifecycle()
+    val downloadNetworkOnPlaylistAdd by
+        viewModel.downloadNetworkOnPlaylistAdd.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -177,6 +179,14 @@ fun SettingsScreen(
                             }",
                             trailingText = "清除缓存",
                             onClick = viewModel::clearCache,
+                        )
+                    }
+                    item {
+                        SketchSwitchRow(
+                            title = "网络歌曲默认下载",
+                            subtitle = "添加到播放列表时默认下载到本地",
+                            checked = downloadNetworkOnPlaylistAdd,
+                            onCheckedChange = viewModel::setDownloadNetworkOnPlaylistAdd,
                         )
                     }
                     item {

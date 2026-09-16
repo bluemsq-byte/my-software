@@ -72,9 +72,21 @@ class PlaylistRepository @Inject constructor(
     suspend fun addTracks(playlistId: Long, tracks: List<AudioTrack>) {
         if (tracks.isEmpty()) return
         val existing = playlistDao.getItems(playlistId)
+        val existingKeys = existing.mapTo(mutableSetOf()) { item ->
+            stableKey(
+                mediaId = item.mediaId,
+                connectionId = item.connectionId,
+                remotePath = item.remotePath,
+                uri = item.uri,
+            )
+        }
+        val uniqueTracks = tracks
+            .distinctBy { track -> track.stableKey() }
+            .filterNot { track -> track.stableKey() in existingKeys }
+        if (uniqueTracks.isEmpty()) return
         var position = (existing.maxOfOrNull(PlaylistItemEntity::position) ?: -1) + 1
         playlistDao.insertItems(
-            tracks.map { track ->
+            uniqueTracks.map { track ->
                 track.toPlaylistItem(playlistId, position++)
             },
         )
@@ -124,6 +136,26 @@ class PlaylistRepository @Inject constructor(
         connectionId = connectionId,
         remotePath = remotePath,
     )
+
+    private fun AudioTrack.stableKey() = stableKey(
+        mediaId = id,
+        connectionId = connectionId,
+        remotePath = remotePath,
+        uri = uri,
+    )
+
+    private fun stableKey(
+        mediaId: String,
+        connectionId: String?,
+        remotePath: String?,
+        uri: String,
+    ): String {
+        return if (!connectionId.isNullOrBlank() && !remotePath.isNullOrBlank()) {
+            "$connectionId:$remotePath"
+        } else {
+            mediaId.ifBlank { uri }
+        }
+    }
 
     private fun PlaylistItemEntity.toModel() = PlaylistItem(
         id = id,

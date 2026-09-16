@@ -31,6 +31,7 @@ import com.example.audioplayer.feature.library.RecentPlayScreen
 import com.example.audioplayer.feature.player.PlayerScreen
 import com.example.audioplayer.feature.playlist.PlaylistDetailScreen
 import com.example.audioplayer.feature.playlist.PlaylistListScreen
+import com.example.audioplayer.feature.playlist.PlaylistNetworkSourceScreen
 import com.example.audioplayer.feature.settings.SettingsScreen
 import com.example.audioplayer.feature.search.GlobalSearchScreen
 import com.example.audioplayer.feature.timer.TimerEditorScreen
@@ -53,6 +54,7 @@ private const val ROUTE_TIMER_EDITOR = "timer_editor"
 private const val ROUTE_BROWSER = "browser"
 private const val ROUTE_SMB_SHARES = "smb_shares"
 private const val ROUTE_GLOBAL_SEARCH = "global_search"
+private const val ROUTE_PLAYLIST_NETWORK = "playlist_network_sources"
 
 private val MAIN_BOTTOM_NAV_ROUTES = setOf(
     ROUTE_LIBRARY,
@@ -202,7 +204,36 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                 PlaylistDetailScreen(
                     onBack = { navController.popBackStack() },
                     onAddNetworkSongs = {
-                        navController.navigate("$ROUTE_LIBRARY?tab=network")
+                        val playlistId = it
+                        navController.navigate("$ROUTE_PLAYLIST_NETWORK/$playlistId")
+                    },
+                )
+            }
+            composable(
+                route = "$ROUTE_PLAYLIST_NETWORK/{playlistId}",
+                arguments = listOf(
+                    navArgument("playlistId") { type = NavType.LongType },
+                ),
+            ) { entry ->
+                val playlistId = entry.arguments?.getLong("playlistId") ?: return@composable
+                PlaylistNetworkSourceScreen(
+                    onBack = { navController.popBackStack() },
+                    onAddConnection = { navController.navigate(ROUTE_ADD_NETWORK_MUSIC) },
+                    onConnectionSelected = { connection ->
+                        if (
+                            connection.protocol ==
+                            com.example.audioplayer.core.model.ConnectionProtocol.SMB &&
+                            connection.selectedShare.isNullOrBlank()
+                        ) {
+                            navController.navigate(
+                                "$ROUTE_SMB_SHARES/${Uri.encode(connection.id)}" +
+                                    "?playlistId=$playlistId",
+                            )
+                        } else {
+                            navController.navigate(
+                                browserRoute(connection.id, playlistId = playlistId),
+                            )
+                        }
                     },
                 )
             }
@@ -260,32 +291,52 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                 )
             }
             composable(
-                route = "$ROUTE_SMB_SHARES/{connectionId}",
+                route = "$ROUTE_SMB_SHARES/{connectionId}?playlistId={playlistId}",
                 arguments = listOf(
                     navArgument("connectionId") { type = NavType.StringType },
+                    navArgument("playlistId") {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                    },
                 ),
             ) { entry ->
                 val selectedConnectionId = entry.arguments?.getString("connectionId").orEmpty()
+                val playlistId = entry.arguments?.getLong("playlistId")?.takeIf { it > 0L }
                 SmbSharePickerScreen(
                     onBack = { navController.popBackStack() },
                     onSelected = {
-                        navController.navigate(browserRoute(selectedConnectionId))
+                        navController.navigate(
+                            browserRoute(selectedConnectionId, playlistId = playlistId),
+                        )
                     },
                 )
             }
             composable(
-                route = "$ROUTE_BROWSER/{connectionId}?path={path}",
+                route = "$ROUTE_BROWSER/{connectionId}?path={path}&playlistId={playlistId}",
                 arguments = listOf(
                     navArgument("connectionId") { type = NavType.StringType },
                     navArgument("path") {
                         type = NavType.StringType
                         defaultValue = "/"
                     },
+                    navArgument("playlistId") {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                    },
                 ),
-            ) {
+            ) { entry ->
+                val playlistId = entry.arguments?.getLong("playlistId")?.takeIf { it > 0L }
                 BrowserScreen(
                     onBack = { navController.popBackStack() },
                     onOpenPlayer = { navController.navigate(ROUTE_PLAYER) },
+                    onPlaylistAdded = {
+                        playlistId?.let { targetId ->
+                            navController.popBackStack(
+                                route = "$ROUTE_PLAYLIST_DETAIL/$targetId",
+                                inclusive = false,
+                            )
+                        } ?: navController.popBackStack()
+                    },
                 )
             }
         }
@@ -296,6 +347,11 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
 
 private fun animationDuration(): Int = if (ValueAnimator.areAnimatorsEnabled()) 260 else 0
 
-private fun browserRoute(connectionId: String, path: String = "/"): String {
-    return "$ROUTE_BROWSER/${Uri.encode(connectionId)}?path=${Uri.encode(path)}"
+private fun browserRoute(
+    connectionId: String,
+    path: String = "/",
+    playlistId: Long? = null,
+): String {
+    val playlistQuery = playlistId?.let { "&playlistId=$it" }.orEmpty()
+    return "$ROUTE_BROWSER/${Uri.encode(connectionId)}?path=${Uri.encode(path)}$playlistQuery"
 }

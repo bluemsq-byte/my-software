@@ -38,6 +38,10 @@ class SettingsRepository @Inject constructor(
         preferences[SLEEP_TIMER_END_AT]
     }
 
+    val downloadNetworkOnPlaylistAdd: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
+        preferences[DOWNLOAD_NETWORK_ON_PLAYLIST_ADD] ?: false
+    }
+
     fun lastRemotePath(connectionId: String): Flow<String?> =
         context.settingsDataStore.data.map { preferences ->
             preferences[lastRemotePathKey(connectionId)]
@@ -68,6 +72,12 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun setDownloadNetworkOnPlaylistAdd(enabled: Boolean) {
+        context.settingsDataStore.edit {
+            it[DOWNLOAD_NETWORK_ON_PLAYLIST_ADD] = enabled
+        }
+    }
+
     private fun lastRemotePathKey(connectionId: String) =
         stringPreferencesKey("last_remote_path_$connectionId")
 
@@ -76,5 +86,7 @@ class SettingsRepository @Inject constructor(
         val SLEEP_TIMER_END_AT = longPreferencesKey("sleep_timer_end_at")
         val DARK_MODE = stringPreferencesKey("dark_mode")
         val THEME_COLOR = stringPreferencesKey("theme_color")
+        val DOWNLOAD_NETWORK_ON_PLAYLIST_ADD =
+            booleanPreferencesKey("download_network_on_playlist_add")
     }
 }

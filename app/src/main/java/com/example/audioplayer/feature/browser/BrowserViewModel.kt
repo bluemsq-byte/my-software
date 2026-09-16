@@ -11,6 +11,7 @@ import com.example.audioplayer.core.repository.PlaylistRepository
 import com.example.audioplayer.core.repository.RemoteFileRepository
 import com.example.audioplayer.core.search.SearchMatcher
 import com.example.audioplayer.core.settings.SettingsRepository
+import com.example.audioplayer.core.storage.NetworkDownloadRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,8 @@ data class BrowserUiState(
     val sortAscending: Boolean = true,
     val selectionMode: Boolean = false,
     val selectedPaths: Set<String> = emptySet(),
+    val downloadOnAdd: Boolean = false,
+    val isPlaylistPicker: Boolean = false,
 ) {
     val visibleEntries: List<RemoteEntry>
         get() {
@@ -64,17 +67,32 @@ class BrowserViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository,
     private val playbackController: PlaybackController,
     private val settingsRepository: SettingsRepository,
+    private val networkDownloadRepository: NetworkDownloadRepository,
 ) : ViewModel() {
     private val connectionId: String = requireNotNull(savedStateHandle["connectionId"])
     private val initialPath: String = savedStateHandle.get<String>("path").orEmpty().ifBlank { "/" }
-    private val _state = MutableStateFlow(BrowserUiState(path = RemotePath.normalize(initialPath)))
+    private val playlistId: Long? = savedStateHandle.get<Long>("playlistId")?.takeIf { it > 0L }
+    private val _state = MutableStateFlow(
+        BrowserUiState(
+            path = RemotePath.normalize(initialPath),
+            selectionMode = playlistId != null,
+            isPlaylistPicker = playlistId != null,
+        ),
+    )
     val state: StateFlow<BrowserUiState> = _state.asStateFlow()
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
     val playlists: StateFlow<List<PlaylistSummary>> = playlistRepository.observeSummaries()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         viewModelScope.launch {
             val savedPath = settingsRepository.lastRemotePath(connectionId).first()
+            if (playlistId != null) {
+                _state.value = _state.value.copy(
+                    downloadOnAdd = settingsRepository.downloadNetworkOnPlaylistAdd.first(),
+                )
+            }
             load(savedPath.orEmpty().ifBlank { initialPath })
         }
     }
@@ -171,6 +189,43 @@ class BrowserViewModel @Inject constructor(
             remoteFileRepository.buildQueue(connectionId, _state.value.path, selectedEntries)
                 .forEach(playbackController::addToQueue)
         }
+    }
+
+    fun setDownloadOnAdd(enabled: Boolean) {
+        _state.value = _state.value.copy(downloadOnAdd = enabled)
+    }
+
+    fun addSelectedToPlaylist(onComplete: () -> Unit) {
+        val targetPlaylistId = playlistId ?: return
+        val selected = _state.value.selectedPaths
+        val selectedEntries = _state.value.visibleEntries.filter {
+            it.isAudioFile && it.path in selected
+        }
+        if (selectedEntries.isEmpty()) return
+        viewModelScope.launch {
+            runCatching {
+                val queue = remoteFileRepository.buildQueue(
+                    connectionId = connectionId,
+                    path = _state.value.path,
+                    entries = selectedEntries,
+                )
+                val tracks = if (_state.value.downloadOnAdd) {
+                    queue.map { track -> networkDownloadRepository.download(track) }
+                } else {
+                    queue
+                }
+                playlistRepository.addTracks(targetPlaylistId, tracks)
+            }.onSuccess {
+                _message.value = "已添加到播放列表"
+                onComplete()
+            }.onFailure { error ->
+                _message.value = error.message ?: "添加网络音乐失败"
+            }
+        }
+    }
+
+    fun clearMessage() {
+        _message.value = null
     }
 
     fun addToPlaylist(playlistId: Long, entry: RemoteEntry) {

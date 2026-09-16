@@ -16,9 +16,12 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,22 +57,35 @@ import com.example.audioplayer.ui.sketch.SketchTrackUiModel
 fun BrowserScreen(
     onBack: () -> Unit,
     onOpenPlayer: () -> Unit,
+    onPlaylistAdded: () -> Unit = {},
     viewModel: BrowserViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
     var pendingPlaylistEntry by remember { mutableStateOf<RemoteEntry?>(null) }
     var searchVisible by remember { mutableStateOf(false) }
 
+    LaunchedEffect(message) {
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessage()
+        }
+    }
+
     SketchBaseScreen {
-        Scaffold(containerColor = Color.Transparent) { padding ->
+        Scaffold(
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
             ) {
                 SketchTopBar(
-                    title = state.path,
+                    title = if (state.isPlaylistPicker) "选择网络音乐" else state.path,
                     onBack = onBack,
                     actions = {
                         SketchIconAction(
@@ -233,22 +249,46 @@ fun BrowserScreen(
                                 }
                             }
                             if (state.selectionMode) {
-                                SketchToolbar {
-                                    SketchPill(
-                                        label = "全选",
-                                        onClick = viewModel::selectAll,
+                                if (state.isPlaylistPicker) {
+                                    SketchSwitchRow(
+                                        title = "下载到本地",
+                                        subtitle = "下载完成后加入播放列表，可离线播放",
+                                        checked = state.downloadOnAdd,
+                                        onCheckedChange = viewModel::setDownloadOnAdd,
                                     )
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    SketchPill(
-                                        label = "加入队列",
-                                        selected = state.selectedPaths.isNotEmpty(),
-                                        onClick = viewModel::addSelectedToQueue,
-                                    )
-                                    SketchPill(
-                                        label = "播放所选（${state.selectedPaths.size}）",
-                                        selected = state.selectedPaths.isNotEmpty(),
-                                        onClick = viewModel::playSelected,
-                                    )
+                                    SketchToolbar {
+                                        SketchPill(
+                                            label = "全选",
+                                            onClick = viewModel::selectAll,
+                                        )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        SketchPill(
+                                            label = "添加到播放列表（${state.selectedPaths.size}）",
+                                            selected = state.selectedPaths.isNotEmpty(),
+                                            enabled = state.selectedPaths.isNotEmpty(),
+                                            onClick = {
+                                                viewModel.addSelectedToPlaylist(onPlaylistAdded)
+                                            },
+                                        )
+                                    }
+                                } else {
+                                    SketchToolbar {
+                                        SketchPill(
+                                            label = "全选",
+                                            onClick = viewModel::selectAll,
+                                        )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        SketchPill(
+                                            label = "加入队列",
+                                            selected = state.selectedPaths.isNotEmpty(),
+                                            onClick = viewModel::addSelectedToQueue,
+                                        )
+                                        SketchPill(
+                                            label = "播放所选（${state.selectedPaths.size}）",
+                                            selected = state.selectedPaths.isNotEmpty(),
+                                            onClick = viewModel::playSelected,
+                                        )
+                                    }
                                 }
                             }
                         }

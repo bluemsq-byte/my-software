@@ -23,8 +23,8 @@ android {
         applicationId = "com.example.audioplayer"
         minSdk = 28
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.8.1"
+        versionCode = 16
+        versionName = "1.8.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

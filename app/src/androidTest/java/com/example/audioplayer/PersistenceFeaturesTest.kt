@@ -1,6 +1,9 @@
 package com.example.audioplayer
 
 import androidx.room.Room
+import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.cache.NoOpCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.audioplayer.core.database.AppDatabase
@@ -73,6 +76,20 @@ class PersistenceFeaturesTest {
     }
 
     @Test
+    fun playlistAdd_doesNotDuplicateSameNetworkTrack() = runBlocking {
+        val repository = PlaylistRepository(database.playlistDao())
+        val playlistId = repository.create("网络收藏")
+        val track = track("nas-track", "NAS 歌曲", AudioSourceType.SMB, "nas")
+
+        repository.addTracks(playlistId, listOf(track))
+        repository.addTracks(playlistId, listOf(track, track.copy(title = "重复标题")))
+
+        val items = repository.observeItems(playlistId).first()
+        assertThat(items).hasSize(1)
+        assertThat(items.single().title).isEqualTo("NAS 歌曲")
+    }
+
+    @Test
     fun timerRepository_preservesSelectedFileOrder() = runBlocking {
         val repository = TimerRepository(database.timerDao(), database.timerFileDao())
         val id = repository.save(
@@ -95,7 +112,12 @@ class PersistenceFeaturesTest {
     @Test
     fun cacheManager_clearsCacheWithoutTouchingDatabase() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val manager = CacheManager(context, OkHttpClient())
+        val mediaCache = SimpleCache(
+            File(context.cacheDir, "test-media-cache-${System.nanoTime()}"),
+            NoOpCacheEvictor(),
+            StandaloneDatabaseProvider(context),
+        )
+        val manager = CacheManager(context, OkHttpClient(), mediaCache)
         val file = File(context.cacheDir, "test-cache-entry").apply {
             parentFile?.mkdirs()
             writeText("cache")
@@ -103,6 +125,7 @@ class PersistenceFeaturesTest {
         assertThat(manager.usage().totalBytes).isAtLeast(file.length())
         manager.clear()
         assertThat(file.exists()).isFalse()
+        mediaCache.release()
     }
 
     @Test
