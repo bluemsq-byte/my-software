@@ -82,3 +82,40 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         )
     }
 }
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS playback_session (
+                id INTEGER PRIMARY KEY NOT NULL,
+                currentIndex INTEGER NOT NULL,
+                positionMillis INTEGER NOT NULL,
+                playbackMode TEXT NOT NULL,
+                updatedAtEpochMillis INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        database.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS playback_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                position INTEGER NOT NULL,
+                mediaId TEXT NOT NULL,
+                title TEXT NOT NULL,
+                artist TEXT,
+                album TEXT,
+                durationMillis INTEGER NOT NULL,
+                uri TEXT NOT NULL,
+                artworkUri TEXT,
+                sourceType TEXT NOT NULL,
+                connectionId TEXT,
+                remotePath TEXT
+            )
+            """.trimIndent(),
+        )
+        database.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_playback_queue_position ON playback_queue(position)",
+        )
+    }
+}

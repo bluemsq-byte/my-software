@@ -63,6 +63,9 @@ class LibraryViewModel @Inject constructor(
     val connections: StateFlow<List<ConnectionEntity>> = connectionRepository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val playbackState: StateFlow<com.example.audioplayer.core.playback.PlaybackUiState> =
+        playbackController.state
+
     fun loadLocal(force: Boolean = false) {
         if (_localState.value.isLoading) return
         if (!force && _localState.value.tracks.isNotEmpty()) return
@@ -102,6 +105,14 @@ class LibraryViewModel @Inject constructor(
 
     fun addToQueue(track: AudioTrack) {
         playbackController.addToQueue(track)
+    }
+
+    fun resumePlayback() {
+        if (playbackController.state.value.currentTrackId != null &&
+            !playbackController.state.value.isPlaying
+        ) {
+            playbackController.playPause()
+        }
     }
 
     fun testConnection(connection: ConnectionEntity) {

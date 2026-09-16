@@ -38,6 +38,11 @@ class SettingsRepository @Inject constructor(
         preferences[SLEEP_TIMER_END_AT]
     }
 
+    fun lastRemotePath(connectionId: String): Flow<String?> =
+        context.settingsDataStore.data.map { preferences ->
+            preferences[lastRemotePathKey(connectionId)]
+        }
+
     suspend fun setBackgroundPlaybackEnabled(enabled: Boolean) {
         context.settingsDataStore.edit { it[BACKGROUND_PLAYBACK] = enabled }
     }
@@ -56,6 +61,15 @@ class SettingsRepository @Inject constructor(
             else preferences[SLEEP_TIMER_END_AT] = endAtMillis
         }
     }
+
+    suspend fun setLastRemotePath(connectionId: String, path: String) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[lastRemotePathKey(connectionId)] = path
+        }
+    }
+
+    private fun lastRemotePathKey(connectionId: String) =
+        stringPreferencesKey("last_remote_path_$connectionId")
 
     private companion object {
         val BACKGROUND_PLAYBACK = booleanPreferencesKey("background_playback")

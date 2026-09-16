@@ -6,13 +6,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -37,6 +42,7 @@ import com.example.audioplayer.core.storage.MediaPermission
 import com.example.audioplayer.ui.formatDuration
 import com.example.audioplayer.ui.sketch.SketchConnectionRow
 import com.example.audioplayer.ui.sketch.SketchConnectionUiModel
+import com.example.audioplayer.ui.sketch.SketchContinuePlayingCard
 import com.example.audioplayer.ui.sketch.SketchDesign
 import com.example.audioplayer.ui.sketch.SketchEmptyState
 import com.example.audioplayer.ui.sketch.SketchFolderRow
@@ -61,6 +67,7 @@ import com.example.audioplayer.ui.sketch.SketchTrackUiModel
 fun LibraryScreen(
     initialTab: Int = 0,
     onAddConnection: () -> Unit,
+    onOpenSearch: () -> Unit,
     onOpenConnection: (ConnectionEntity) -> Unit,
     onEditConnection: (ConnectionEntity) -> Unit,
     viewModel: LibraryViewModel = hiltViewModel(),
@@ -69,9 +76,10 @@ fun LibraryScreen(
     val localState by viewModel.localState.collectAsStateWithLifecycle()
     val connections by viewModel.connections.collectAsStateWithLifecycle()
     val connectionMessage by viewModel.connectionMessage.collectAsStateWithLifecycle()
+    val playbackState by viewModel.playbackState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by remember { mutableIntStateOf(initialTab) }
-    var localViewIsFolders by remember { mutableStateOf(false) }
+    var localViewMode by remember { mutableStateOf(LibraryViewMode.SONGS) }
     var hasPermission by remember { mutableStateOf(MediaPermission.isGranted(context)) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -105,18 +113,31 @@ fun LibraryScreen(
                 title = "音乐",
                 actions = {
                     SketchIconAction(
+                        icon = Icons.Default.Search,
+                        contentDescription = "全局搜索",
+                        onClick = onOpenSearch,
+                    )
+                    SketchIconAction(
                         icon = Icons.Default.Add,
                         contentDescription = "添加网络音乐",
                         onClick = onAddConnection,
                     )
                 },
             )
+            if (playbackState.currentTrackId != null) {
+                SketchContinuePlayingCard(
+                    title = playbackState.title,
+                    artist = playbackState.artist.orEmpty(),
+                    isPlaying = playbackState.isPlaying,
+                    onClick = viewModel::resumePlayback,
+                )
+            }
             if (selectedTab == 0) {
                 LocalMusicContent(
                     state = localState,
                     hasPermission = hasPermission,
-                    showFolders = localViewIsFolders,
-                    onToggleView = { localViewIsFolders = !localViewIsFolders },
+                    viewMode = localViewMode,
+                    onViewModeChange = { localViewMode = it },
                     onRequestPermission = { permissionLauncher.launch(MediaPermission.permission) },
                     onOpenNetworkMusic = {
                         selectedTab = 1
@@ -147,8 +168,8 @@ fun LibraryScreen(
 private fun LocalMusicContent(
     state: LocalLibraryUiState,
     hasPermission: Boolean,
-    showFolders: Boolean,
-    onToggleView: () -> Unit,
+    viewMode: LibraryViewMode,
+    onViewModeChange: (LibraryViewMode) -> Unit,
     onRequestPermission: () -> Unit,
     onOpenNetworkMusic: () -> Unit,
     onRefresh: () -> Unit,
@@ -241,42 +262,38 @@ private fun LocalMusicContent(
                     onSelected = onTabSelected,
                     modifier = Modifier.padding(horizontal = SketchSpacing.Page),
                 )
-                SketchToolbar {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = SketchSpacing.Page, vertical = SketchSpacing.Sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(SketchSpacing.Sm),
+                ) {
                     Text(
                         text = "共 ${state.tracks.size} 首",
                         color = SketchDesign.colors.muted,
                         style = SketchTextStyles.Auxiliary,
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    SketchPill(
-                        label = "歌曲",
-                        selected = !showFolders,
-                        onClick = { if (showFolders) onToggleView() },
-                    )
-                    SketchPill(
-                        label = "文件夹",
-                        selected = showFolders,
-                        onClick = { if (!showFolders) onToggleView() },
-                    )
+                    LibraryViewMode.entries.forEach { mode ->
+                        SketchPill(
+                            label = mode.label,
+                            selected = viewMode == mode,
+                            onClick = { onViewModeChange(mode) },
+                        )
+                    }
                     SketchPill(label = "刷新", onClick = onRefresh)
                 }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = SketchSpacing.Md),
                 ) {
-                    if (showFolders) {
-                        items(state.visibleFolders, key = { it.path }) { folder ->
-                            SketchFolderRow(
-                                folder = SketchFolderUiModel(
-                                    id = folder.path,
-                                    name = folder.name,
-                                    songCount = folder.tracks.size,
-                                ),
-                                onClick = { onPlay(folder.tracks, 0) },
-                            )
-                        }
-                    } else {
-                        items(state.visibleTracks, key = { it.id }) { track ->
+                    when (viewMode) {
+                        LibraryViewMode.SONGS -> items(
+                            state.visibleTracks,
+                            key = { it.id },
+                        ) { track ->
                             SketchTrackRow(
                                 track = SketchTrackUiModel(
                                     id = track.id.toString(),
@@ -302,11 +319,66 @@ private fun LocalMusicContent(
                                 ),
                             )
                         }
+
+                        LibraryViewMode.FOLDERS -> items(
+                            state.visibleFolders,
+                            key = { it.path },
+                        ) { folder ->
+                            SketchFolderRow(
+                                folder = SketchFolderUiModel(
+                                    id = folder.path,
+                                    name = folder.name,
+                                    songCount = folder.tracks.size,
+                                ),
+                                onClick = { onPlay(folder.tracks, 0) },
+                            )
+                        }
+
+                        LibraryViewMode.ALBUMS -> items(
+                            state.visibleTracks
+                                .groupBy { it.album?.takeIf(String::isNotBlank) ?: "未知专辑" }
+                                .toList(),
+                            key = { it.first },
+                        ) { (album, tracks) ->
+                            SketchFolderRow(
+                                folder = SketchFolderUiModel(
+                                    id = "album-$album",
+                                    name = album,
+                                    songCount = tracks.size,
+                                    description = "专辑",
+                                ),
+                                onClick = { onPlay(tracks, 0) },
+                            )
+                        }
+
+                        LibraryViewMode.ARTISTS -> items(
+                            state.visibleTracks
+                                .groupBy { it.artist?.takeIf(String::isNotBlank) ?: "未知歌手" }
+                                .toList(),
+                            key = { it.first },
+                        ) { (artist, tracks) ->
+                            SketchFolderRow(
+                                folder = SketchFolderUiModel(
+                                    id = "artist-$artist",
+                                    name = artist,
+                                    songCount = tracks.size,
+                                    description = "歌手",
+                                ),
+                                onClick = { onPlay(tracks, 0) },
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private enum class LibraryViewMode(val label: String) {
+    SONGS("歌曲"),
+    FOLDERS("文件夹"),
+    ALBUMS("专辑"),
+    ARTISTS("歌手"),
 }
 
 @Composable

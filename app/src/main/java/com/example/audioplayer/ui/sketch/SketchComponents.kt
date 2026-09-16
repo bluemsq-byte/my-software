@@ -424,6 +424,7 @@ fun SketchSegmentedTabs(
 fun SketchPill(
     label: String,
     selected: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit = {},
 ) {
     val colors = SketchDesign.colors
@@ -436,13 +437,17 @@ fun SketchPill(
                 BorderStroke(SketchStroke.Border, if (selected) Color.Transparent else colors.border),
                 RoundedCornerShape(SketchRadius.Pill),
             )
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = SketchSpacing.Md),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            color = if (selected) colors.onDark else colors.muted,
+            color = when {
+                !enabled -> colors.muted.copy(alpha = SketchOpacity.Disabled)
+                selected -> colors.onDark
+                else -> colors.muted
+            },
             style = SketchTextStyles.Auxiliary,
         )
     }
@@ -800,6 +805,57 @@ fun SketchSettingRow(
         },
         onClick = onClick,
     )
+}
+
+@Composable
+fun SketchContinuePlayingCard(
+    title: String,
+    artist: String,
+    isPlaying: Boolean,
+    onClick: () -> Unit = {},
+) {
+    val colors = SketchDesign.colors
+    SketchGlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = SketchSpacing.Page, vertical = SketchSpacing.Sm),
+        contentPadding = PaddingValues(SketchSpacing.Md),
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(SketchSpacing.Md),
+        ) {
+            SketchArtworkPlaceholder(modifier = Modifier.size(SketchSizes.HeroArtwork))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isPlaying) "正在播放" else "继续播放",
+                    color = colors.primary,
+                    style = SketchTextStyles.Auxiliary,
+                )
+                Text(
+                    text = title,
+                    color = colors.ink,
+                    style = SketchTextStyles.RowTitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = artist,
+                    color = colors.muted,
+                    style = SketchTextStyles.RowSubtitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            SketchIconAction(
+                icon = Icons.Default.PlayArrow,
+                contentDescription = "继续播放",
+                onClick = onClick,
+            )
+        }
+    }
 }
 
 @Composable

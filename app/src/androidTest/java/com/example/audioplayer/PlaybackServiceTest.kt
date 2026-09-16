@@ -8,6 +8,7 @@ import com.example.audioplayer.core.model.AudioSourceType
 import com.example.audioplayer.core.model.AudioTrack
 import com.example.audioplayer.core.playback.PlaybackController
 import com.example.audioplayer.core.repository.RecentPlayRepository
+import com.example.audioplayer.core.repository.PlaybackSessionRepository
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -28,7 +29,11 @@ class PlaybackServiceTest {
         val database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        val controller = PlaybackController(context, RecentPlayRepository(database.recentPlayDao()))
+        val controller = PlaybackController(
+            context,
+            RecentPlayRepository(database.recentPlayDao()),
+            PlaybackSessionRepository(database.playbackSessionDao()),
+        )
         val file = File(context.cacheDir, "playback-test.wav")
         file.writeBytes(createWaveTone())
         withContext(Dispatchers.Main) { controller.connect() }
@@ -86,7 +91,11 @@ class PlaybackServiceTest {
         val database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        val controller = PlaybackController(context, RecentPlayRepository(database.recentPlayDao()))
+        val controller = PlaybackController(
+            context,
+            RecentPlayRepository(database.recentPlayDao()),
+            PlaybackSessionRepository(database.playbackSessionDao()),
+        )
         controller.connect()
 
         val state = withTimeout(10_000L) {

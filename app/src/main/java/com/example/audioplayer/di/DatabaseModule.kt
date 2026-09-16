@@ -5,7 +5,9 @@ import androidx.room.Room
 import com.example.audioplayer.core.database.AppDatabase
 import com.example.audioplayer.core.database.ConnectionDao
 import com.example.audioplayer.core.database.MIGRATION_1_2
+import com.example.audioplayer.core.database.MIGRATION_2_3
 import com.example.audioplayer.core.database.PlaylistDao
+import com.example.audioplayer.core.database.PlaybackSessionDao
 import com.example.audioplayer.core.database.RecentPlayDao
 import com.example.audioplayer.core.database.TimerDao
 import com.example.audioplayer.core.database.TimerFileDao
@@ -25,7 +27,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(context, AppDatabase::class.java, "audio_player.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 
@@ -43,6 +45,10 @@ object DatabaseModule {
 
     @Provides
     fun providePlaylistDao(database: AppDatabase): PlaylistDao = database.playlistDao()
+
+    @Provides
+    fun providePlaybackSessionDao(database: AppDatabase): PlaybackSessionDao =
+        database.playbackSessionDao()
 
     @Provides
     @Singleton

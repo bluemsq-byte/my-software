@@ -130,6 +130,32 @@ class PlaylistDetailViewModel @Inject constructor(
         }
     }
 
+    fun removeSelected() {
+        val selected = _state.value.selectedItemIds
+        if (selected.isEmpty()) return
+        viewModelScope.launch {
+            selected.forEach { itemId ->
+                playlistRepository.removeItem(playlistId, itemId)
+            }
+            _state.value = _state.value.copy(selectedItemIds = emptySet())
+        }
+    }
+
+    fun moveSelected(direction: Int) {
+        val selected = _state.value.selectedItemIds
+        if (selected.isEmpty()) return
+        viewModelScope.launch {
+            val ordered = if (direction < 0) {
+                _state.value.items.map { it.id }.filter { it in selected }
+            } else {
+                _state.value.items.map { it.id }.filter { it in selected }.reversed()
+            }
+            ordered.forEach { itemId ->
+                playlistRepository.moveItem(playlistId, itemId, direction)
+            }
+        }
+    }
+
     fun remove(itemId: Long) {
         viewModelScope.launch { playlistRepository.removeItem(playlistId, itemId) }
     }

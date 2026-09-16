@@ -7,6 +7,7 @@ import com.example.audioplayer.core.settings.CacheManager
 import com.example.audioplayer.core.settings.CacheUsage
 import com.example.audioplayer.core.settings.DarkModeSetting
 import com.example.audioplayer.core.settings.SettingsRepository
+import com.example.audioplayer.core.backup.BackupRepository
 import com.example.audioplayer.core.storage.LocalMediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,6 +23,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val localMediaRepository: LocalMediaRepository,
     private val cacheManager: CacheManager,
+    private val backupRepository: BackupRepository,
 ) : ViewModel() {
     private val _cacheUsage = MutableStateFlow(CacheUsage(0L, 0L))
     val cacheUsage: StateFlow<CacheUsage> = _cacheUsage.asStateFlow()
@@ -69,5 +71,17 @@ class SettingsViewModel @Inject constructor(
 
     fun rescanLocalMusic() {
         viewModelScope.launch { runCatching { localMediaRepository.scan() } }
+    }
+
+    suspend fun createBackup(): String = backupRepository.exportJson()
+
+    suspend fun restoreBackup(json: String) {
+        runCatching { backupRepository.importJson(json) }
+            .onSuccess { _message.value = it }
+            .onFailure { _message.value = it.message ?: "备份恢复失败" }
+    }
+
+    fun showMessage(message: String) {
+        _message.value = message
     }
 }

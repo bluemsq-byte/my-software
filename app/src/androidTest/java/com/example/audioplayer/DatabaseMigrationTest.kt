@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.audioplayer.core.database.AppDatabase
 import com.example.audioplayer.core.database.MIGRATION_1_2
+import com.example.audioplayer.core.database.MIGRATION_2_3
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -59,6 +60,28 @@ class DatabaseMigrationTest {
             assertThat(cursor.getString(0)).isEqualTo("FOLDER")
         }
         database.query("SELECT COUNT(*) FROM timer_files").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getInt(0)).isEqualTo(0)
+        }
+        database.close()
+    }
+
+    @Test
+    fun migrate2To3_createsPlaybackSessionTables() {
+        helper.createDatabase(TEST_DATABASE, 2).close()
+
+        val database = helper.runMigrationsAndValidate(
+            TEST_DATABASE,
+            3,
+            true,
+            MIGRATION_2_3,
+        )
+
+        database.query("SELECT COUNT(*) FROM playback_session").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getInt(0)).isEqualTo(0)
+        }
+        database.query("SELECT COUNT(*) FROM playback_queue").use { cursor ->
             assertThat(cursor.moveToFirst()).isTrue()
             assertThat(cursor.getInt(0)).isEqualTo(0)
         }

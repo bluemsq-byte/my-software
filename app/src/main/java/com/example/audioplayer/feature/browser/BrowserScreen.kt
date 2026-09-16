@@ -3,7 +3,10 @@ package com.example.audioplayer.feature.browser
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,10 +38,12 @@ import com.example.audioplayer.ui.sketch.SketchFolderRow
 import com.example.audioplayer.ui.sketch.SketchFolderUiModel
 import com.example.audioplayer.ui.sketch.SketchIconAction
 import com.example.audioplayer.ui.sketch.SketchMenuActionUiModel
+import com.example.audioplayer.ui.sketch.SketchPill
 import com.example.audioplayer.ui.sketch.SketchSearchField
 import com.example.audioplayer.ui.sketch.SketchSpacing
 import com.example.audioplayer.ui.sketch.SketchSwitchRow
 import com.example.audioplayer.ui.sketch.SketchTopBar
+import com.example.audioplayer.ui.sketch.SketchToolbar
 import com.example.audioplayer.ui.sketch.SketchTrackRow
 import com.example.audioplayer.ui.sketch.SketchTrackUiModel
 
@@ -132,8 +137,37 @@ fun BrowserScreen(
                                 checked = state.audioOnly,
                                 onCheckedChange = { viewModel.toggleAudioOnly() },
                             )
+                            SketchToolbar {
+                                SketchPill(
+                                    label = when (state.sortMode) {
+                                        BrowserSortMode.NAME -> "名称"
+                                        BrowserSortMode.MODIFIED -> "修改时间"
+                                        BrowserSortMode.SIZE -> "大小"
+                                    },
+                                    selected = true,
+                                    onClick = viewModel::cycleSortMode,
+                                )
+                                SketchPill(
+                                    label = if (state.sortAscending) "升序" else "降序",
+                                    onClick = viewModel::toggleSortDirection,
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                SketchPill(
+                                    label = if (state.selectionMode) "取消" else "选择",
+                                    selected = state.selectionMode,
+                                    onClick = {
+                                        if (state.selectionMode) {
+                                            viewModel.exitSelectionMode()
+                                        } else {
+                                            viewModel.enterSelectionMode()
+                                        }
+                                    },
+                                )
+                            }
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
                                 contentPadding = PaddingValues(vertical = SketchSpacing.Sm),
                             ) {
                                 RemotePath.parent(state.path)?.let { parent ->
@@ -168,11 +202,17 @@ fun BrowserScreen(
                                                 artist = "网络音乐",
                                                 album = state.path,
                                                 duration = "",
+                                                selected = entry.path in state.selectedPaths,
                                             ),
                                             onPlay = {
-                                                viewModel.play(entry)
-                                                onOpenPlayer()
+                                                if (state.selectionMode) {
+                                                    viewModel.toggleSelection(entry)
+                                                } else {
+                                                    viewModel.play(entry)
+                                                    onOpenPlayer()
+                                                }
                                             },
+                                            showSelection = state.selectionMode,
                                             actions = listOf(
                                                 SketchMenuActionUiModel("立即播放") {
                                                     viewModel.play(entry)
@@ -190,6 +230,25 @@ fun BrowserScreen(
                                             ),
                                         )
                                     }
+                                }
+                            }
+                            if (state.selectionMode) {
+                                SketchToolbar {
+                                    SketchPill(
+                                        label = "全选",
+                                        onClick = viewModel::selectAll,
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    SketchPill(
+                                        label = "加入队列",
+                                        selected = state.selectedPaths.isNotEmpty(),
+                                        onClick = viewModel::addSelectedToQueue,
+                                    )
+                                    SketchPill(
+                                        label = "播放所选（${state.selectedPaths.size}）",
+                                        selected = state.selectedPaths.isNotEmpty(),
+                                        onClick = viewModel::playSelected,
+                                    )
                                 }
                             }
                         }

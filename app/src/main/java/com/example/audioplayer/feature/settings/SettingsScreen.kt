@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +43,7 @@ import com.example.audioplayer.ui.sketch.SketchThemeSwatchGrid
 import com.example.audioplayer.ui.sketch.SketchThemeUiModel
 import com.example.audioplayer.ui.sketch.SketchToolbar
 import com.example.audioplayer.ui.sketch.SketchTopBar
+import kotlinx.coroutines.launch
 
 /**
  * 设置页。主题、缓存和权限逻辑保持原实现，只替换为规范化的设置卡片。
@@ -55,6 +59,36 @@ fun SettingsScreen(
     val themeColor by viewModel.themeColor.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val exportBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { writer ->
+                    writer.write(viewModel.createBackup())
+                } ?: error("无法创建备份文件")
+            }.onSuccess {
+                viewModel.showMessage("备份已导出")
+            }.onFailure {
+                viewModel.showMessage(it.message ?: "备份导出失败")
+            }
+        }
+    }
+    val importBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+                    reader.readText()
+                } ?: error("无法读取备份文件")
+            }.onSuccess { viewModel.restoreBackup(it) }
+                .onFailure { viewModel.showMessage(it.message ?: "备份读取失败") }
+        }
+    }
 
     LaunchedEffect(message) {
         message?.let {
@@ -144,6 +178,22 @@ fun SettingsScreen(
                             trailingText = "清除缓存",
                             onClick = viewModel::clearCache,
                         )
+                    }
+                    item {
+                        SketchToolbar {
+                            SketchSecondaryButton(
+                                label = "导出备份",
+                                onClick = { exportBackup.launch("audio-player-backup.json") },
+                                modifier = Modifier.weight(1f),
+                            )
+                            SketchSecondaryButton(
+                                label = "恢复备份",
+                                onClick = {
+                                    importBackup.launch(arrayOf("application/json", "text/plain"))
+                                },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                     item {
                         val mediaGranted = ContextCompat.checkSelfPermission(

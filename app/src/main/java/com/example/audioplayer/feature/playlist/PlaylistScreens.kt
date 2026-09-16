@@ -265,6 +265,21 @@ fun PlaylistDetailScreen(
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         SketchPill(
+                            label = "上移",
+                            enabled = state.selectedItemIds.isNotEmpty(),
+                            onClick = { viewModel.moveSelected(-1) },
+                        )
+                        SketchPill(
+                            label = "下移",
+                            enabled = state.selectedItemIds.isNotEmpty(),
+                            onClick = { viewModel.moveSelected(1) },
+                        )
+                        SketchPill(
+                            label = "移除",
+                            enabled = state.selectedItemIds.isNotEmpty(),
+                            onClick = viewModel::removeSelected,
+                        )
+                        SketchPill(
                             label = "播放所选（${state.selectedItemIds.size}）",
                             selected = state.selectedItemIds.isNotEmpty(),
                             onClick = viewModel::playSelected,

@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.model.TimerAction
+import com.example.audioplayer.core.model.TimerNextRunCalculator
 import com.example.audioplayer.core.model.TimerTask
 import com.example.audioplayer.ui.sketch.SketchEmptyState
 import com.example.audioplayer.ui.sketch.SketchIconAction
@@ -25,6 +26,8 @@ import com.example.audioplayer.ui.sketch.SketchSpacing
 import com.example.audioplayer.ui.sketch.SketchTimerCard
 import com.example.audioplayer.ui.sketch.SketchTimerUiModel
 import com.example.audioplayer.ui.sketch.SketchTopBar
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * 定时任务列表页。
@@ -83,7 +86,13 @@ fun TimerListScreen(
                                 } else {
                                     com.example.audioplayer.ui.sketch.SketchTimerAction.STOP
                                 },
-                                repeatText = repeatSummary(task),
+                                repeatText = buildString {
+                                    append(repeatSummary(task))
+                                    TimerNextRunCalculator.nextRun(task, LocalDateTime.now())?.let {
+                                        append(" · 下次 ")
+                                        append(it.format(NEXT_RUN_FORMAT))
+                                    }
+                                },
                                 sourceText = if (task.action == TimerAction.START) {
                                     "${task.sourceType?.name.orEmpty()} · ${task.sourcePath.orEmpty()}"
                                 } else {
@@ -101,6 +110,8 @@ fun TimerListScreen(
         }
     }
 }
+
+private val NEXT_RUN_FORMAT = DateTimeFormatter.ofPattern("MM-dd HH:mm")
 
 private fun repeatSummary(task: TimerTask): String {
     if (task.repeatDays.isEmpty()) return "仅一次"

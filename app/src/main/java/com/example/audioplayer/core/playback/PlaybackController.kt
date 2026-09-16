@@ -10,6 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.example.audioplayer.core.model.AudioTrack
+import com.example.audioplayer.core.repository.PlaybackSessionRepository
 import com.example.audioplayer.core.repository.RecentPlayRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -56,6 +57,7 @@ data class PlaybackUiState(
 class PlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val recentPlayRepository: RecentPlayRepository,
+    private val playbackSessionRepository: PlaybackSessionRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(PlaybackUiState())
@@ -65,6 +67,8 @@ class PlaybackController @Inject constructor(
     private var progressJob: Job? = null
     private var tracksById = emptyMap<String, AudioTrack>()
     private var lastRecordedTrackId: String? = null
+    private var lastPersistedAtMillis: Long = 0L
+    private var restoringSession = false
 
     fun connect() {
         if (controller != null) return
@@ -79,6 +83,7 @@ class PlaybackController @Inject constructor(
                     mediaController.addListener(playerListener)
                     _state.value = mediaController.toUiState()
                     startProgressUpdates(mediaController)
+                    scope.launch { restoreSessionIfNeeded(mediaController) }
                 }
             },
             { runnable -> scope.launch(Dispatchers.Main) { runnable.run() } },
@@ -98,6 +103,7 @@ class PlaybackController @Inject constructor(
         )
         controller.prepare()
         controller.play()
+        persistSession(force = true)
     }
 
     fun playPause() {
@@ -110,12 +116,14 @@ class PlaybackController @Inject constructor(
         val insertIndex = (mediaController.currentMediaItemIndex + 1)
             .coerceIn(0, mediaController.mediaItemCount)
         mediaController.addMediaItem(insertIndex, MediaItemFactory.create(track))
+        persistSession(force = true)
     }
 
     fun addToQueue(track: AudioTrack) {
         val mediaController = controller ?: return
         tracksById = tracksById + (track.id to track)
         mediaController.addMediaItem(MediaItemFactory.create(track))
+        persistSession(force = true)
     }
 
     fun next() {
@@ -133,6 +141,7 @@ class PlaybackController @Inject constructor(
             PlaybackMode.REPEAT_ALL -> Player.REPEAT_MODE_ALL
             PlaybackMode.REPEAT_ONE -> Player.REPEAT_MODE_ONE
         }
+        persistSession(force = true)
     }
 
     fun seekToQueueItem(index: Int) {
@@ -140,6 +149,7 @@ class PlaybackController @Inject constructor(
         if (index in 0 until mediaController.mediaItemCount) {
             mediaController.seekTo(index, 0L)
             mediaController.play()
+            persistSession(force = true)
         }
     }
 
@@ -149,6 +159,7 @@ class PlaybackController @Inject constructor(
             toIndex in 0 until mediaController.mediaItemCount
         ) {
             mediaController.moveMediaItem(fromIndex, toIndex)
+            persistSession(force = true)
         }
     }
 
@@ -156,15 +167,18 @@ class PlaybackController @Inject constructor(
         val mediaController = controller ?: return
         if (index in 0 until mediaController.mediaItemCount) {
             mediaController.removeMediaItem(index)
+            persistSession(force = true)
         }
     }
 
     fun seekTo(positionMillis: Long) {
         controller?.seekTo(positionMillis)
+        persistSession(force = true)
     }
 
     fun stop() {
         controller?.pause()
+        persistSession(force = true)
     }
 
     private val playerListener = object : Player.Listener {
@@ -177,12 +191,27 @@ class PlaybackController @Inject constructor(
                 }
             }
             _state.value = player.toUiState()
+            persistSession(force = false)
         }
     }
 
     private fun Player.toUiState(): PlaybackUiState {
         val mediaItem = currentMediaItem
         val track = mediaItem?.mediaId?.let(tracksById::get)
+        val queue = (0 until mediaItemCount).mapNotNull { index ->
+            val item = getMediaItemAt(index)
+            val queueTrack = tracksById[item.mediaId]
+            if (queueTrack == null) {
+                null
+            } else {
+                QueueTrack(
+                    mediaId = queueTrack.id,
+                    title = queueTrack.title,
+                    artist = queueTrack.artist,
+                    isCurrent = index == currentMediaItemIndex,
+                )
+            }
+        }
         return PlaybackUiState(
             isConnected = true,
             isPlaying = isPlaying,
@@ -199,6 +228,7 @@ class PlaybackController @Inject constructor(
                 Player.REPEAT_MODE_ALL -> PlaybackMode.REPEAT_ALL
                 else -> PlaybackMode.SEQUENTIAL
             },
+            queue = queue,
         )
     }
 
@@ -207,8 +237,64 @@ class PlaybackController @Inject constructor(
         progressJob = scope.launch {
             while (true) {
                 _state.value = controller.toUiState()
+                persistSession(force = false)
                 delay(500L)
             }
         }
+    }
+
+    private suspend fun restoreSessionIfNeeded(mediaController: MediaController) {
+        if (mediaController.mediaItemCount > 0) return
+        val session = playbackSessionRepository.load() ?: return
+        if (session.queue.isEmpty()) return
+        restoringSession = true
+        try {
+            tracksById = session.queue.associateBy(AudioTrack::id)
+            mediaController.setMediaItems(
+                session.queue.map(MediaItemFactory::create),
+                session.currentIndex,
+                session.positionMillis,
+            )
+            mediaController.repeatMode = when (session.playbackMode) {
+                PlaybackMode.SEQUENTIAL -> Player.REPEAT_MODE_OFF
+                PlaybackMode.REPEAT_ALL -> Player.REPEAT_MODE_ALL
+                PlaybackMode.REPEAT_ONE -> Player.REPEAT_MODE_ONE
+            }
+            mediaController.prepare()
+            mediaController.pause()
+            _state.value = mediaController.toUiState().copy(isPlaying = false)
+        } finally {
+            restoringSession = false
+        }
+    }
+
+    private fun persistSession(force: Boolean) {
+        if (restoringSession) return
+        val mediaController = controller ?: return
+        val now = System.currentTimeMillis()
+        if (!force && now - lastPersistedAtMillis < SESSION_PERSIST_INTERVAL_MILLIS) return
+        lastPersistedAtMillis = now
+        val queue = (0 until mediaController.mediaItemCount).mapNotNull { index ->
+            val mediaId = mediaController.getMediaItemAt(index).mediaId
+            tracksById[mediaId]
+        }
+        if (queue.isEmpty()) return
+        val playbackMode = when (mediaController.repeatMode) {
+            Player.REPEAT_MODE_ONE -> PlaybackMode.REPEAT_ONE
+            Player.REPEAT_MODE_ALL -> PlaybackMode.REPEAT_ALL
+            else -> PlaybackMode.SEQUENTIAL
+        }
+        scope.launch {
+            playbackSessionRepository.save(
+                queue = queue,
+                currentIndex = mediaController.currentMediaItemIndex,
+                positionMillis = mediaController.currentPosition.coerceAtLeast(0L),
+                playbackMode = playbackMode,
+            )
+        }
+    }
+
+    private companion object {
+        const val SESSION_PERSIST_INTERVAL_MILLIS = 3_000L
     }
 }

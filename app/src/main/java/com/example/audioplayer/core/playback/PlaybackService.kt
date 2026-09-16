@@ -32,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -134,7 +135,21 @@ class PlaybackService : MediaSessionService() {
         val task = timerRepository.get(timerId) ?: return
         if (task.action != TimerAction.START || task.sourceType == null) return
 
-        val tracks = when (task.sourceType) {
+        val tracks = runCatching { loadTimerTracks(task) }.getOrElse { error ->
+            showTimerError("定时播放失败：${error.message ?: "无法读取音乐"}")
+            return
+        }
+
+        if (tracks.isEmpty()) {
+            showTimerError("定时播放失败：指定目录没有可播放音乐")
+            return
+        }
+        playTracks(tracks)
+    }
+
+    private suspend fun loadTimerTracks(task: com.example.audioplayer.core.model.TimerTask): List<AudioTrack> {
+        val sourceType = task.sourceType ?: throw IllegalStateException("缺少音乐来源")
+        return when (sourceType) {
             TimerSourceType.LOCAL_FOLDER -> {
                 val localTracks = localMediaRepository.scan()
                 if (task.selectionType == TimerSelectionType.FILES) {
@@ -151,27 +166,27 @@ class PlaybackService : MediaSessionService() {
             TimerSourceType.WEBDAV_FOLDER,
             -> {
                 val connectionId = task.connectionId ?: run {
-                    showTimerError("定时播放失败：缺少 NAS 连接")
-                    return
+                    throw IllegalStateException("缺少 NAS 连接")
                 }
                 val path = task.sourcePath ?: "/"
-                val entries = remoteFileRepository.list(connectionId, path)
-                val queueByPath = remoteFileRepository
-                    .buildQueue(connectionId, path, entries)
-                    .associateBy { it.remotePath }
-                if (task.selectionType == TimerSelectionType.FILES) {
-                    task.selectedFiles.mapNotNull(queueByPath::get)
-                } else {
-                    remoteFileRepository.buildQueue(connectionId, path, entries)
+                repeat(2) { attempt ->
+                    try {
+                        val entries = remoteFileRepository.list(connectionId, path)
+                        val queue = remoteFileRepository.buildQueue(connectionId, path, entries)
+                        return if (task.selectionType == TimerSelectionType.FILES) {
+                            val queueByPath = queue.associateBy { it.remotePath }
+                            task.selectedFiles.mapNotNull(queueByPath::get)
+                        } else {
+                            queue
+                        }
+                    } catch (error: Exception) {
+                        if (attempt == 1) throw error
+                        delay(1_500L)
+                    }
                 }
+                emptyList()
             }
         }
-
-        if (tracks.isEmpty()) {
-            showTimerError("定时播放失败：指定目录没有可播放音乐")
-            return
-        }
-        playTracks(tracks)
     }
 
     private fun playTracks(tracks: List<AudioTrack>) {

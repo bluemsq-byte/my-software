@@ -32,6 +32,7 @@ import com.example.audioplayer.feature.player.PlayerScreen
 import com.example.audioplayer.feature.playlist.PlaylistDetailScreen
 import com.example.audioplayer.feature.playlist.PlaylistListScreen
 import com.example.audioplayer.feature.settings.SettingsScreen
+import com.example.audioplayer.feature.search.GlobalSearchScreen
 import com.example.audioplayer.feature.timer.TimerEditorScreen
 import com.example.audioplayer.feature.timer.TimerListScreen
 import com.example.audioplayer.ui.sketch.SketchBaseScreen
@@ -51,6 +52,7 @@ private const val ROUTE_ADD_NETWORK_MUSIC = "add_network_music"
 private const val ROUTE_TIMER_EDITOR = "timer_editor"
 private const val ROUTE_BROWSER = "browser"
 private const val ROUTE_SMB_SHARES = "smb_shares"
+private const val ROUTE_GLOBAL_SEARCH = "global_search"
 
 private val MAIN_BOTTOM_NAV_ROUTES = setOf(
     ROUTE_LIBRARY,
@@ -145,6 +147,7 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                 LibraryScreen(
                     initialTab = if (entry.arguments?.getString("tab") == "network") 1 else 0,
                     onAddConnection = { navController.navigate(ROUTE_ADD_NETWORK_MUSIC) },
+                    onOpenSearch = { navController.navigate(ROUTE_GLOBAL_SEARCH) },
                     onOpenConnection = { connection ->
                         if (connection.protocol == com.example.audioplayer.core.model.ConnectionProtocol.SMB &&
                             connection.selectedShare.isNullOrBlank()
@@ -229,6 +232,14 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                         navController.navigate(
                             "$ROUTE_CONNECTION_EDITOR?protocol=${protocol.name}",
                         )
+                    },
+                )
+            }
+            composable(ROUTE_GLOBAL_SEARCH) {
+                GlobalSearchScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPlaylist = { playlistId ->
+                        navController.navigate("$ROUTE_PLAYLIST_DETAIL/$playlistId")
                     },
                 )
             }

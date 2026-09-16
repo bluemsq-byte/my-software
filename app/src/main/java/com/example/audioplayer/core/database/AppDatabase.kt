@@ -12,8 +12,10 @@ import androidx.room.TypeConverters
         RecentPlayEntity::class,
         PlaylistEntity::class,
         PlaylistItemEntity::class,
+        PlaybackSessionEntity::class,
+        PlaybackQueueEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(DatabaseTypeConverters::class)
@@ -23,4 +25,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun timerFileDao(): TimerFileDao
     abstract fun recentPlayDao(): RecentPlayDao
     abstract fun playlistDao(): PlaylistDao
+    abstract fun playbackSessionDao(): PlaybackSessionDao
 }
