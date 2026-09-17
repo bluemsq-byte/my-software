@@ -147,12 +147,6 @@ fun BrowserScreen(
                                     ),
                                 )
                             }
-                            SketchSwitchRow(
-                                title = "仅显示音频",
-                                subtitle = "隐藏当前文件夹中的非音频文件",
-                                checked = state.audioOnly,
-                                onCheckedChange = { viewModel.toggleAudioOnly() },
-                            )
                             SketchToolbar {
                                 SketchPill(
                                     label = when (state.sortMode) {

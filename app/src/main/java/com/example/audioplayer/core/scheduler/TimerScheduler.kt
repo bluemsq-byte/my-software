@@ -38,13 +38,27 @@ class TimerScheduler @Inject constructor(
 
         val pendingIntent = pendingIntent(task.id, task.action.name, PendingIntent.FLAG_UPDATE_CURRENT)
         try {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                pendingIntent,
-            )
+            if (canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    pendingIntent,
+                )
+            } else {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    pendingIntent,
+                )
+            }
         } catch (exception: SecurityException) {
-            throw IllegalStateException("需要开启精确闹钟权限")
+            runCatching {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    pendingIntent,
+                )
+            }
         }
     }
 
@@ -64,7 +78,7 @@ class TimerScheduler @Inject constructor(
 
     suspend fun rescheduleAll() {
         timerRepository.getEnabled().forEach { task ->
-            schedule(task)
+            runCatching { schedule(task) }
         }
     }
 

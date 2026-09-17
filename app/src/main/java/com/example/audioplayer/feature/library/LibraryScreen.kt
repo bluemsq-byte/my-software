@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
@@ -46,6 +47,7 @@ import com.example.audioplayer.core.model.AudioTrack
 import com.example.audioplayer.core.model.RecentPlay
 import com.example.audioplayer.core.playback.PlaybackUiState
 import com.example.audioplayer.core.storage.MediaPermission
+import com.example.audioplayer.core.storage.LocalFolderTree
 import com.example.audioplayer.ui.formatDuration
 import com.example.audioplayer.ui.sketch.SketchConnectionRow
 import com.example.audioplayer.ui.sketch.SketchConnectionUiModel
@@ -93,6 +95,7 @@ fun LibraryScreen(
         mutableStateOf(if (initialTab == 1) LibraryPane.NETWORK else LibraryPane.HOME)
     }
     var localViewMode by remember { mutableStateOf(LibraryViewMode.SONGS) }
+    var currentFolderPath by remember { mutableStateOf<String?>(null) }
     var hasPermission by remember { mutableStateOf(MediaPermission.isGranted(context)) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -162,6 +165,30 @@ fun LibraryScreen(
                                 contentDescription = "全局搜索",
                                 onClick = onOpenSearch,
                             )
+                            SketchIconAction(
+                                icon = if (localViewMode == LibraryViewMode.FOLDERS) {
+                                    Icons.Default.MusicNote
+                                } else {
+                                    Icons.Default.Folder
+                                },
+                                contentDescription = if (
+                                    localViewMode == LibraryViewMode.FOLDERS
+                                ) {
+                                    "返回歌曲列表"
+                                } else {
+                                    "浏览文件夹"
+                                },
+                                onClick = {
+                                    localViewMode = if (
+                                        localViewMode == LibraryViewMode.FOLDERS
+                                    ) {
+                                        LibraryViewMode.SONGS
+                                    } else {
+                                        currentFolderPath = null
+                                        LibraryViewMode.FOLDERS
+                                    }
+                                },
+                            )
                         },
                     )
                     LocalMusicContent(
@@ -169,6 +196,8 @@ fun LibraryScreen(
                         hasPermission = hasPermission,
                         viewMode = localViewMode,
                         onViewModeChange = { localViewMode = it },
+                        currentFolderPath = currentFolderPath,
+                        onFolderPathChange = { currentFolderPath = it },
                         onRequestPermission = {
                             permissionLauncher.launch(MediaPermission.permission)
                         },
@@ -359,6 +388,8 @@ private fun LocalMusicContent(
     hasPermission: Boolean,
     viewMode: LibraryViewMode,
     onViewModeChange: (LibraryViewMode) -> Unit,
+    currentFolderPath: String?,
+    onFolderPathChange: (String?) -> Unit,
     onRequestPermission: () -> Unit,
     onOpenNetworkMusic: () -> Unit,
     onRefresh: () -> Unit,
@@ -367,6 +398,14 @@ private fun LocalMusicContent(
     onPlayNext: (AudioTrack) -> Unit,
     onAddToQueue: (AudioTrack) -> Unit,
 ) {
+    val folderTree = remember(state.tracks) {
+        LocalFolderTree.build(state.tracks)
+    }
+    val activeFolder = remember(folderTree, currentFolderPath) {
+        currentFolderPath
+            ?.let { path -> LocalFolderTree.findNode(folderTree, path) }
+            ?: folderTree
+    }
     when {
         !hasPermission -> {
             Column(
@@ -458,7 +497,10 @@ private fun LocalMusicContent(
                         style = SketchTextStyles.Auxiliary,
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    LibraryViewMode.entries.forEach { mode ->
+                    listOf(
+                        LibraryViewMode.ALBUMS,
+                        LibraryViewMode.ARTISTS,
+                    ).forEach { mode ->
                         SketchPill(
                             label = mode.label,
                             selected = viewMode == mode,
@@ -502,18 +544,69 @@ private fun LocalMusicContent(
                             )
                         }
 
-                        LibraryViewMode.FOLDERS -> items(
-                            state.visibleFolders,
-                            key = { it.path },
-                        ) { folder ->
-                            SketchFolderRow(
-                                folder = SketchFolderUiModel(
-                                    id = folder.path,
-                                    name = folder.name,
-                                    songCount = folder.tracks.size,
-                                ),
-                                onClick = { onPlay(folder.tracks, 0) },
-                            )
+                        LibraryViewMode.FOLDERS -> {
+                            if (activeFolder.path != folderTree.path) {
+                                item(key = "parent-${activeFolder.path}") {
+                                    val parent = activeFolder.path.substringBeforeLast('/')
+                                        .ifBlank { "/" }
+                                    SketchFolderRow(
+                                        folder = SketchFolderUiModel(
+                                            id = "parent-${activeFolder.path}",
+                                            name = "返回上级",
+                                            songCount = 0,
+                                            description = parent,
+                                        ),
+                                        onClick = {
+                                            onFolderPathChange(
+                                                if (parent == folderTree.path) null else parent,
+                                            )
+                                        },
+                                    )
+                                }
+                            }
+                            items(
+                                activeFolder.childFolders,
+                                key = { it.path },
+                            ) { folder ->
+                                SketchFolderRow(
+                                    folder = SketchFolderUiModel(
+                                        id = folder.path,
+                                        name = folder.name,
+                                        songCount = folder.tracks.size +
+                                            folder.childFolders.sumOf { it.tracks.size },
+                                    ),
+                                    onClick = { onFolderPathChange(folder.path) },
+                                )
+                            }
+                            items(
+                                activeFolder.tracks,
+                                key = { "folder-track-${it.id}" },
+                            ) { track ->
+                                val queue = activeFolder.tracks
+                                SketchTrackRow(
+                                    track = SketchTrackUiModel(
+                                        id = track.id,
+                                        title = track.title,
+                                        artist = track.artist ?: "未知歌手",
+                                        album = track.album.orEmpty(),
+                                        duration = formatDuration(track.durationMillis),
+                                    ),
+                                    onPlay = {
+                                        onPlay(queue, queue.indexOf(track).coerceAtLeast(0))
+                                    },
+                                    actions = listOf(
+                                        SketchMenuActionUiModel("立即播放") {
+                                            onPlay(listOf(track), 0)
+                                        },
+                                        SketchMenuActionUiModel("下一首播放") {
+                                            onPlayNext(track)
+                                        },
+                                        SketchMenuActionUiModel("加入播放队列") {
+                                            onAddToQueue(track)
+                                        },
+                                    ),
+                                )
+                            }
                         }
 
                         LibraryViewMode.ALBUMS -> items(

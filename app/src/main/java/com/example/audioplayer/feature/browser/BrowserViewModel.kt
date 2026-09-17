@@ -93,6 +93,9 @@ class BrowserViewModel @Inject constructor(
                     downloadOnAdd = settingsRepository.downloadNetworkOnPlaylistAdd.first(),
                 )
             }
+            _state.value = _state.value.copy(
+                audioOnly = settingsRepository.networkMusicAudioOnly.first(),
+            )
             load(savedPath.orEmpty().ifBlank { initialPath })
         }
     }

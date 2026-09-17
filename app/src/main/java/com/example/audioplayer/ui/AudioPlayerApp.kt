@@ -32,6 +32,7 @@ import com.example.audioplayer.feature.player.PlayerScreen
 import com.example.audioplayer.feature.playlist.PlaylistDetailScreen
 import com.example.audioplayer.feature.playlist.PlaylistListScreen
 import com.example.audioplayer.feature.playlist.PlaylistNetworkSourceScreen
+import com.example.audioplayer.feature.playlist.LocalPlaylistPickerScreen
 import com.example.audioplayer.feature.settings.SettingsScreen
 import com.example.audioplayer.feature.search.GlobalSearchScreen
 import com.example.audioplayer.feature.timer.TimerEditorScreen
@@ -55,6 +56,7 @@ private const val ROUTE_BROWSER = "browser"
 private const val ROUTE_SMB_SHARES = "smb_shares"
 private const val ROUTE_GLOBAL_SEARCH = "global_search"
 private const val ROUTE_PLAYLIST_NETWORK = "playlist_network_sources"
+private const val ROUTE_PLAYLIST_LOCAL = "playlist_local_sources"
 
 private val MAIN_BOTTOM_NAV_ROUTES = setOf(
     ROUTE_LIBRARY,
@@ -163,7 +165,7 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
                 )
             }
             composable(ROUTE_RECENT) {
-                RecentPlayScreen()
+                RecentPlayScreen(onBack = { navController.popBackStack() })
             }
             composable(ROUTE_TIMERS) {
                 TimerListScreen(
@@ -203,9 +205,29 @@ fun AudioPlayerApp(playbackController: PlaybackController) {
             ) {
                 PlaylistDetailScreen(
                     onBack = { navController.popBackStack() },
+                    onAddLocalSongs = { playlistId ->
+                        navController.navigate("$ROUTE_PLAYLIST_LOCAL/$playlistId")
+                    },
                     onAddNetworkSongs = {
                         val playlistId = it
                         navController.navigate("$ROUTE_PLAYLIST_NETWORK/$playlistId")
+                    },
+                )
+            }
+            composable(
+                route = "$ROUTE_PLAYLIST_LOCAL/{playlistId}",
+                arguments = listOf(
+                    navArgument("playlistId") { type = NavType.LongType },
+                ),
+            ) { entry ->
+                val playlistId = entry.arguments?.getLong("playlistId") ?: return@composable
+                LocalPlaylistPickerScreen(
+                    onBack = { navController.popBackStack() },
+                    onAdded = {
+                        navController.popBackStack(
+                            route = "$ROUTE_PLAYLIST_DETAIL/$playlistId",
+                            inclusive = false,
+                        )
                     },
                 )
             }

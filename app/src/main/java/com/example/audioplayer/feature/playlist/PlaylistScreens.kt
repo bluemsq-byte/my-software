@@ -37,10 +37,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.audioplayer.core.model.AudioTrack
 import com.example.audioplayer.core.database.ConnectionEntity
 import com.example.audioplayer.feature.library.LibraryViewModel
+import com.example.audioplayer.core.storage.LocalFolderNode
+import com.example.audioplayer.core.storage.LocalFolderTree
 import com.example.audioplayer.ui.sketch.SketchBaseScreen
 import com.example.audioplayer.ui.sketch.SketchConnectionRow
 import com.example.audioplayer.ui.sketch.SketchConnectionUiModel
 import com.example.audioplayer.ui.sketch.SketchEmptyState
+import com.example.audioplayer.ui.sketch.SketchFolderRow
+import com.example.audioplayer.ui.sketch.SketchFolderUiModel
 import com.example.audioplayer.ui.sketch.SketchIconAction
 import com.example.audioplayer.ui.sketch.SketchMenuActionUiModel
 import com.example.audioplayer.ui.sketch.SketchPill
@@ -52,6 +56,7 @@ import com.example.audioplayer.ui.sketch.SketchTopBar
 import com.example.audioplayer.ui.sketch.SketchTrackRow
 import com.example.audioplayer.ui.sketch.SketchTrackUiModel
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.audioplayer.ui.formatDuration
 
 /**
  * 播放列表列表页。
@@ -166,11 +171,11 @@ fun PlaylistListScreen(
 @Composable
 fun PlaylistDetailScreen(
     onBack: () -> Unit,
+    onAddLocalSongs: (Long) -> Unit,
     onAddNetworkSongs: (Long) -> Unit,
     viewModel: PlaylistDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var selectedTracks by remember { mutableStateOf(setOf<AudioTrack>()) }
 
     SketchBaseScreen {
         Scaffold(containerColor = Color.Transparent) { padding ->
@@ -204,7 +209,7 @@ fun PlaylistDetailScreen(
                     )
                     SketchPill(
                         label = "添加本地",
-                        onClick = viewModel::openAddLocalDialog,
+                        onClick = { onAddLocalSongs(viewModel.playlistId) },
                     )
                     SketchPill(
                         label = "添加网络",
@@ -295,53 +300,6 @@ fun PlaylistDetailScreen(
         }
     }
 
-    if (state.showAddLocalDialog) {
-        AlertDialog(
-            onDismissRequest = viewModel::closeAddLocalDialog,
-            title = { Text("添加本地歌曲") },
-            text = {
-                LazyColumn {
-                    items(state.localTracks, key = { it.id }) { track ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedTracks = if (track in selectedTracks) {
-                                        selectedTracks - track
-                                    } else {
-                                        selectedTracks + track
-                                    }
-                                },
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Checkbox(
-                                checked = track in selectedTracks,
-                                onCheckedChange = {
-                                    selectedTracks = if (track in selectedTracks) {
-                                        selectedTracks - track
-                                    } else {
-                                        selectedTracks + track
-                                    }
-                                },
-                            )
-                            Text(track.title, maxLines = 1)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.addLocalTracks(selectedTracks.toList())
-                        selectedTracks = emptySet()
-                    },
-                ) { Text("添加") }
-            },
-            dismissButton = {
-                Button(onClick = { viewModel.closeAddLocalDialog() }) { Text("取消") }
-            },
-        )
-    }
 }
 
 /**
@@ -401,3 +359,136 @@ fun PlaylistNetworkSourceScreen(
         }
     }
 }
+
+/**
+ * 添加本地歌曲：按真实目录层级进入文件夹，再选择歌曲。
+ */
+@Composable
+fun LocalPlaylistPickerScreen(
+    onBack: () -> Unit,
+    onAdded: () -> Unit,
+    viewModel: LocalPlaylistPickerViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    val root = state.root
+    val current = remember(root, state.currentPath) {
+        root?.let { tree ->
+            state.currentPath?.let { path -> LocalFolderTree.findNode(tree, path) } ?: tree
+        }
+    }
+
+    LaunchedEffect(state.message) {
+        state.message?.let {
+            snackbar.showSnackbar(it)
+            viewModel.clearMessage()
+        }
+    }
+
+    SketchBaseScreen {
+        Scaffold(
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbar) },
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                SketchTopBar(
+                    title = "添加本地歌曲",
+                    onBack = onBack,
+                )
+                when {
+                    state.isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator()
+                        }
+                    }
+
+                    current == null -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            SketchEmptyState(
+                                title = "没有找到本地音乐",
+                                description = "请先授权并扫描本地音乐。",
+                                actionLabel = "返回",
+                                onAction = onBack,
+                            )
+                        }
+                    }
+
+                    else -> {
+                        if (root != null && current.path != root.path) {
+                            SketchToolbar {
+                                Text(
+                                    text = current.path,
+                                    modifier = Modifier.weight(1f),
+                                    color = Color.Gray,
+                                    maxLines = 1,
+                                )
+                                SketchPill(
+                                    label = "返回上级",
+                                    onClick = viewModel::openParent,
+                                )
+                            }
+                        }
+                        LazyColumn(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentPadding = PaddingValues(vertical = SketchSpacing.Sm),
+                        ) {
+                            items(current.childFolders, key = { it.path }) { folder ->
+                                SketchFolderRow(
+                                    folder = SketchFolderUiModel(
+                                        id = folder.path,
+                                        name = folder.name,
+                                        songCount = folder.descendantTrackCount(),
+                                        description = "文件夹",
+                                    ),
+                                    onClick = { viewModel.openFolder(folder) },
+                                )
+                            }
+                            items(current.tracks, key = { it.id }) { track ->
+                                SketchTrackRow(
+                                    track = SketchTrackUiModel(
+                                        id = track.id,
+                                        title = track.title,
+                                        artist = track.artist ?: "未知歌手",
+                                        album = track.album.orEmpty(),
+                                        duration = formatDuration(track.durationMillis),
+                                        selected = track.id in state.selectedTrackIds,
+                                    ),
+                                    onPlay = { viewModel.toggle(track) },
+                                    showSelection = true,
+                                )
+                            }
+                        }
+                        SketchToolbar {
+                            Text(
+                                text = "已选择 ${state.selectedTrackIds.size} 首",
+                                modifier = Modifier.weight(1f),
+                                color = Color.Gray,
+                            )
+                            SketchPill(
+                                label = "添加到播放列表",
+                                selected = state.selectedTrackIds.isNotEmpty(),
+                                enabled = state.selectedTrackIds.isNotEmpty(),
+                                onClick = { viewModel.addSelected(onAdded) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LocalFolderNode.descendantTrackCount(): Int =
+    tracks.size + childFolders.sumOf { it.descendantTrackCount() }

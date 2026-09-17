@@ -39,6 +39,8 @@ class SettingsViewModel @Inject constructor(
     val downloadNetworkOnPlaylistAdd: StateFlow<Boolean> =
         settingsRepository.downloadNetworkOnPlaylistAdd
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val networkMusicAudioOnly: StateFlow<Boolean> = settingsRepository.networkMusicAudioOnly
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     init {
         refreshCacheUsage()
@@ -59,6 +61,12 @@ class SettingsViewModel @Inject constructor(
     fun setDownloadNetworkOnPlaylistAdd(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setDownloadNetworkOnPlaylistAdd(enabled)
+        }
+    }
+
+    fun setNetworkMusicAudioOnly(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setNetworkMusicAudioOnly(enabled)
         }
     }
 

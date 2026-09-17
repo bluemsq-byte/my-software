@@ -64,6 +64,29 @@ class TimerSchedulerTest {
         scheduler.cancel(task.id)
     }
 
+    @Test
+    fun enabledTimers_canBeRescheduledForApplicationRestart() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repository = TimerRepository(database.timerDao(), database.timerFileDao())
+        val scheduler = TimerScheduler(context, repository)
+        val future = LocalDateTime.now().plusMinutes(3)
+        val task = TimerTask(
+            id = 78L,
+            name = "restart",
+            action = TimerAction.START,
+            hour = future.hour,
+            minute = future.minute,
+            repeatDays = emptySet(),
+            enabled = true,
+            sourceType = TimerSourceType.LOCAL_FOLDER,
+            sourcePath = "/Music",
+        )
+        repository.save(task)
+
+        scheduler.rescheduleAll()
+        scheduler.cancel(task.id)
+    }
+
     private fun grantExactAlarmPermission() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val packageName = instrumentation.targetContext.packageName

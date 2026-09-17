@@ -32,6 +32,7 @@ import com.example.audioplayer.ui.sketch.SketchTrackUiModel
  */
 @Composable
 fun RecentPlayScreen(
+    onBack: () -> Unit,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val recent by viewModel.recentPlays.collectAsStateWithLifecycle()
@@ -65,7 +66,7 @@ fun RecentPlayScreen(
                         title = "还没有最近播放记录",
                         description = "播放过的音乐会显示在这里。",
                         actionLabel = "返回首页",
-                        onAction = {},
+                        onAction = onBack,
                     )
                 }
             } else {

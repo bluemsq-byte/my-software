@@ -59,6 +59,7 @@ fun SettingsScreen(
     val themeColor by viewModel.themeColor.collectAsStateWithLifecycle()
     val downloadNetworkOnPlaylistAdd by
         viewModel.downloadNetworkOnPlaylistAdd.collectAsStateWithLifecycle()
+    val networkMusicAudioOnly by viewModel.networkMusicAudioOnly.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -126,6 +127,14 @@ fun SettingsScreen(
                             subtitle = "退出页面后继续播放音乐",
                             checked = backgroundPlayback,
                             onCheckedChange = viewModel::setBackgroundPlaybackEnabled,
+                        )
+                    }
+                    item {
+                        SketchSwitchRow(
+                            title = "网络音乐仅显示音频",
+                            subtitle = "浏览 NAS 文件夹时隐藏非音频文件",
+                            checked = networkMusicAudioOnly,
+                            onCheckedChange = viewModel::setNetworkMusicAudioOnly,
                         )
                     }
                     item {

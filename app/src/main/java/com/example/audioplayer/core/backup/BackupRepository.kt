@@ -43,6 +43,7 @@ class BackupRepository @Inject constructor(
                 "downloadNetworkOnPlaylistAdd",
                 settingsRepository.downloadNetworkOnPlaylistAdd.first(),
             )
+            put("networkMusicAudioOnly", settingsRepository.networkMusicAudioOnly.first())
         })
         return root.toString(2)
     }
@@ -68,6 +69,11 @@ class BackupRepository @Inject constructor(
             if (settings.has("downloadNetworkOnPlaylistAdd")) {
                 settingsRepository.setDownloadNetworkOnPlaylistAdd(
                     settings.optBoolean("downloadNetworkOnPlaylistAdd", false),
+                )
+            }
+            if (settings.has("networkMusicAudioOnly")) {
+                settingsRepository.setNetworkMusicAudioOnly(
+                    settings.optBoolean("networkMusicAudioOnly", false),
                 )
             }
         }

@@ -10,6 +10,8 @@ import com.example.audioplayer.core.model.PlaylistSummary
 import com.example.audioplayer.core.playback.PlaybackController
 import com.example.audioplayer.core.repository.PlaylistRepository
 import com.example.audioplayer.core.storage.LocalMediaRepository
+import com.example.audioplayer.core.storage.LocalFolderNode
+import com.example.audioplayer.core.storage.LocalFolderTree
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -181,4 +183,93 @@ class PlaylistDetailViewModel @Inject constructor(
             _state.value = _state.value.copy(showAddLocalDialog = false)
         }
     }
+}
+
+data class LocalPlaylistPickerUiState(
+    val isLoading: Boolean = true,
+    val root: LocalFolderNode? = null,
+    val currentPath: String? = null,
+    val selectedTrackIds: Set<String> = emptySet(),
+    val message: String? = null,
+)
+
+@HiltViewModel
+class LocalPlaylistPickerViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val localMediaRepository: LocalMediaRepository,
+    private val playlistRepository: PlaylistRepository,
+) : ViewModel() {
+    private val playlistId: Long = requireNotNull(savedStateHandle["playlistId"])
+    private val _state = MutableStateFlow(LocalPlaylistPickerUiState())
+    val state: StateFlow<LocalPlaylistPickerUiState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            runCatching { localMediaRepository.scan() }
+                .onSuccess { tracks ->
+                    val root = LocalFolderTree.build(tracks)
+                    _state.value = LocalPlaylistPickerUiState(
+                        isLoading = false,
+                        root = root,
+                        currentPath = root.path,
+                    )
+                }
+                .onFailure { error ->
+                    _state.value = LocalPlaylistPickerUiState(
+                        isLoading = false,
+                        message = error.message ?: "读取本地音乐失败",
+                    )
+                }
+        }
+    }
+
+    fun openFolder(node: LocalFolderNode) {
+        _state.value = _state.value.copy(currentPath = node.path)
+    }
+
+    fun openParent() {
+        val root = _state.value.root ?: return
+        val currentPath = _state.value.currentPath ?: return
+        if (currentPath == root.path) return
+        val parentPath = currentPath.substringBeforeLast('/').ifBlank { "/" }
+        _state.value = _state.value.copy(
+            currentPath = if (parentPath == root.path) root.path else parentPath,
+        )
+    }
+
+    fun toggle(track: AudioTrack) {
+        val selected = _state.value.selectedTrackIds
+        _state.value = _state.value.copy(
+            selectedTrackIds = if (track.id in selected) {
+                selected - track.id
+            } else {
+                selected + track.id
+            },
+        )
+    }
+
+    fun addSelected(onComplete: () -> Unit) {
+        val root = _state.value.root ?: return
+        val selected = _state.value.selectedTrackIds
+        if (selected.isEmpty()) return
+        val tracks = flattenTracks(root).filter { it.id in selected }
+        viewModelScope.launch {
+            runCatching {
+                playlistRepository.addTracks(playlistId, tracks)
+            }.onSuccess {
+                onComplete()
+            }.onFailure { error ->
+                _state.value = _state.value.copy(
+                    message = error.message ?: "添加本地歌曲失败",
+                )
+            }
+        }
+    }
+
+    fun clearMessage() {
+        _state.value = _state.value.copy(message = null)
+    }
+
+    private fun flattenTracks(node: LocalFolderNode): List<AudioTrack> =
+        node.tracks + node.childFolders.flatMap(::flattenTracks)
 }
