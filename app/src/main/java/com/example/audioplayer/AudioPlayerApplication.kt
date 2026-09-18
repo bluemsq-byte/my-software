@@ -17,6 +17,7 @@ class AudioPlayerApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        timerScheduler.ensureWatchdog()
         applicationScope.launch {
             timerScheduler.rescheduleAll()
         }

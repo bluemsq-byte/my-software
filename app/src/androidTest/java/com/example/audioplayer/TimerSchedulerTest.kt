@@ -83,6 +83,7 @@ class TimerSchedulerTest {
         )
         repository.save(task)
 
+        scheduler.ensureWatchdog()
         scheduler.rescheduleAll()
         scheduler.cancel(task.id)
     }

@@ -18,13 +18,15 @@ class BootReceiver : BroadcastReceiver() {
             intent.action != Intent.ACTION_BOOT_COMPLETED &&
             intent.action != Intent.ACTION_MY_PACKAGE_REPLACED &&
             intent.action != Intent.ACTION_TIME_CHANGED &&
-            intent.action != Intent.ACTION_TIMEZONE_CHANGED
+            intent.action != Intent.ACTION_TIMEZONE_CHANGED &&
+            intent.action != TimerScheduler.ACTION_RESCHEDULE_TIMERS
         ) {
             return
         }
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                scheduler.ensureWatchdog()
                 scheduler.rescheduleAll()
             } finally {
                 pendingResult.finish()

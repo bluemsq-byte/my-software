@@ -45,11 +45,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     }
                     putExtra(PlaybackService.EXTRA_TIMER_ID, timerId)
                 }
-                if (task.action == TimerAction.START) {
-                    ContextCompat.startForegroundService(context, serviceIntent)
-                } else {
-                    runCatching { context.startService(serviceIntent) }
-                }
+                ContextCompat.startForegroundService(context, serviceIntent)
             } finally {
                 pendingResult.finish()
             }

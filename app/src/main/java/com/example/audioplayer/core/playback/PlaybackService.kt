@@ -94,7 +94,12 @@ class PlaybackService : MediaSessionService() {
                 }
             }
 
-            ACTION_STOP_TIMER -> player?.pause()
+            ACTION_STOP_TIMER -> {
+                promoteToForegroundForPreparation()
+                player?.pause()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf(startId)
+            }
             ACTION_SET_SLEEP_TIMER -> {
                 promoteToForegroundForPreparation()
                 val endAtMillis = intent.getLongExtra(EXTRA_SLEEP_TIMER_END_AT, 0L)

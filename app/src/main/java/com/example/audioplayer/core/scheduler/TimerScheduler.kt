@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.example.audioplayer.MainActivity
 import com.example.audioplayer.core.model.TimerNextRunCalculator
 import com.example.audioplayer.core.model.TimerTask
 import com.example.audioplayer.core.repository.TimerRepository
@@ -39,9 +40,16 @@ class TimerScheduler @Inject constructor(
         val pendingIntent = pendingIntent(task.id, task.action.name, PendingIntent.FLAG_UPDATE_CURRENT)
         try {
             if (canScheduleExactAlarms()) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
+                val showIntent = PendingIntent.getActivity(
+                    context,
+                    task.id.toInt(),
+                    Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent),
                     pendingIntent,
                 )
             } else {
@@ -82,6 +90,26 @@ class TimerScheduler @Inject constructor(
         }
     }
 
+    /**
+     * 兜底守护闹钟：即使某次单任务闹钟被系统清理，也会定期重新补排。
+     */
+    fun ensureWatchdog() {
+        val intent = Intent(context, BootReceiver::class.java)
+            .setAction(ACTION_RESCHEDULE_TIMERS)
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            WATCHDOG_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        alarmManager.setInexactRepeating(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + WATCHDOG_INTERVAL_MILLIS,
+            WATCHDOG_INTERVAL_MILLIS,
+            pendingIntent,
+        )
+    }
+
     private fun pendingIntent(taskId: Long, action: String, flags: Int): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java)
             .setAction(ACTION_TIMER)
@@ -99,5 +127,8 @@ class TimerScheduler @Inject constructor(
         const val ACTION_TIMER = "com.example.audioplayer.action.TIMER"
         const val EXTRA_TIMER_ID = "timer_id"
         const val EXTRA_TIMER_ACTION = "timer_action"
+        const val ACTION_RESCHEDULE_TIMERS = "com.example.audioplayer.action.RESCHEDULE_TIMERS"
+        private const val WATCHDOG_REQUEST_CODE = 9_001
+        private const val WATCHDOG_INTERVAL_MILLIS = 12L * 60L * 60L * 1_000L
     }
 }
